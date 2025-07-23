@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Мой TODO-list</title>
+</head>
+<body>
+    <h1>Список задач</h1>
+
+    <form method="POST" action="{{ url_for('index') }}">
+        {{ form.hidden_tag() }}
+        {{ form.title.label }} {{ form.title }}
+        {{ form.submit }}
+    </form>
+
+    {% if tasks %}
+        <ul>
+            {% for task in tasks %}
+                <li>
+                    {{ task.title }}
+                    {% if task.done %}
+                        (выполнено)
+                    {% else %}
+                        (не выполнено)
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Пока задач нет, но скоро мы их добавим!</p>
+    {% endif %}
+</body>
+</html>
