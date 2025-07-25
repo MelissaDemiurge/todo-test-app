@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}TODO‑list{% endblock %}</title>
+  <style>
+    .flashes { list-style: none; padding: 0; }
+    .flashes li { margin: 0.2em 0; }
+    .success { color: green; }
+    .info    { color: blue;  }
+    .warning { color: orange;}
+    .danger  { color: red;   }
+  </style>
+</head>
+<body>
+  <h1>Мой TODO‑list</h1>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <ul class="flashes">
+        {% for category, msg in messages %}
+          <li class="{{ category }}">{{ msg }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</body>
+</html>
