@@ -1,33 +1,39 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <title>Мой TODO-list</title>
-</head>
-<body>
-    <h1>Список задач</h1>
+{% extends 'base.html' %}
 
-    <form method="POST" action="{{ url_for('index') }}">
-        {{ form.hidden_tag() }}
-        {{ form.title.label }} {{ form.title }}
-        {{ form.submit }}
-    </form>
+{% block title %}Список задач{% endblock %}
 
-    {% if tasks %}
-        <ul>
-            {% for task in tasks %}
-                <li>
-                    {{ task.title }}
-                    {% if task.done %}
-                        (выполнено)
-                    {% else %}
-                        (не выполнено)
-                    {% endif %}
-                </li>
-            {% endfor %}
-        </ul>
-    {% else %}
-        <p>Пока задач нет, но скоро мы их добавим!</p>
-    {% endif %}
-</body>
-</html>
+{% block content %}
+  <form method="POST" action="{{ url_for('index') }}">
+    {{ task_form.hidden_tag() }}
+    <p>
+        {{ task_form.title.label }}<br>
+        {{ task_form.title(size=40) }}<br>
+        {% for err in task_form.title.errors %}
+          <span style="color:red">{{ err }}</span><br>
+        {% endfor %}
+    </p>
+    {{ task_form.submit() }}
+  </form>
+
+  {% if tasks %}
+    <ul>
+        {% for task in tasks %}
+          <li>
+            {{ loop.index }}. {{ task.title }}
+            {% if task.done %}
+              — <strong>выполнено</strong>
+            {% else %}
+              — <em>не выполнено</em>
+              <form method="POST" action="{{ url_for('mark_done') }}" style="display:inline">
+                {{ mark_form.hidden_tag() }}
+                {{ mark_form.task_index(value=loop.index0) }}
+                {{ mark_form.submit() }}
+              </form>
+            {% endif %}
+          </li>
+        {% endfor %}
+    </ul>
+  {% else %}
+    <p>Пока задач нет, но скоро мы их добавим!</p>
+  {% endif %}
+{% endblock %}
