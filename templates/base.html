@@ -4,12 +4,73 @@
   <meta charset="UTF-8">
   <title>{% block title %}TODO‑list{% endblock %}</title>
   <style>
-    .flashes { list-style: none; padding: 0; }
-    .flashes li { margin: 0.2em 0; }
-    .success { color: green; }
-    .info    { color: blue;  }
-    .warning { color: orange;}
-    .danger  { color: red;   }
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1 { text-align: center; color: #333; margin-bottom: 0.5em; }
+    .flashes { list-style: none; padding: 0; margin-bottom: 1em; }
+    .flashes li {
+      margin: 0.5em 0;
+      padding: 0.5em 1em;
+      border-radius: 3px;
+    }
+    .success {
+      color: green;
+      background-color: #d4edda;
+      border: 1px solid #c3e6cb;
+    }
+    .info {
+      color: blue;
+      background-color: #d1ecf1;
+      border: 1px solid #bee5eb;
+    }
+    .warning {
+      color: orange;
+      background-color: #fff3cd;
+      border: 1px solid #ffeeba;
+    }
+    .danger {
+      color: red;
+      background-color: #f8d7da;
+      border: 1px solid #f5c6cb;
+    }
+    .tasks { list-style: none; padding: 0; }
+    .tasks li { margin: 0.5em 0; }
+    input[type=text], select {
+      padding: 5px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+    }
+    input[type=text]:focus, select:focus {
+      outline: none;
+      border-color: #007bff;
+      box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+    }
+    .btn {
+      padding: 5px 10px;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      margin-right: 5px;
+      margin-bottom: 5px;
+    }
+    .btn-add, .btn-edit, .btn-save {
+      background-color: #007bff;
+      color: #fff;
+    }
+    .btn-done {
+      background-color: #28a745;
+      color: #fff;
+    }
+    .btn-delete {
+      background-color: #dc3545;
+      color: #fff;
+    }
+    .btn-cancel {
+      background-color: #6c757d;
+      color: #fff;
+    }
+    .btn:hover {
+      opacity: 0.9;
+    }
   </style>
 </head>
 <body>
@@ -26,5 +87,15 @@
   {% endwith %}
 
   {% block content %}{% endblock %}
+  <script>
+    function editTask(index) {
+      document.getElementById('display-' + index).style.display = 'none';
+      document.getElementById('edit-' + index).style.display = 'inline';
+    }
+    function cancelEdit(index) {
+      document.getElementById('display-' + index).style.display = 'inline';
+      document.getElementById('edit-' + index).style.display = 'none';
+    }
+  </script>
 </body>
 </html>
