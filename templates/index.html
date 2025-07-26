@@ -6,32 +6,36 @@
   <form method="POST" action="{{ url_for('index') }}">
     {{ task_form.hidden_tag() }}
     <p>
-        {{ task_form.title.label }}<br>
-        {{ task_form.title(size=40) }}<br>
-        {% for err in task_form.title.errors %}
-          <span style="color:red">{{ err }}</span><br>
-        {% endfor %}
+      {{ task_form.title.label }}<br>
+      {{ task_form.title(size=40) }}<br>
+      {% for err in task_form.title.errors %}
+        <span style="color:red">{{ err }}</span><br>
+      {% endfor %}
     </p>
     {{ task_form.submit() }}
   </form>
 
   {% if tasks %}
     <ul>
-        {% for task in tasks %}
-          <li>
-            {{ loop.index }}. {{ task.title }}
-            {% if task.done %}
-              — <strong>выполнено</strong>
-            {% else %}
-              — <em>не выполнено</em>
-              <form method="POST" action="{{ url_for('mark_done') }}" style="display:inline">
-                {{ mark_form.hidden_tag() }}
-                {{ mark_form.task_index(value=loop.index0) }}
-                {{ mark_form.submit() }}
-              </form>
-            {% endif %}
-          </li>
-        {% endfor %}
+      {% for task in tasks %}
+        <li>
+          {{ loop.index }}. {{ task.title }}
+          {% if task.done %}
+            — <strong>выполнено</strong>
+          {% else %}
+            — <em>не выполнено</em>
+            <form
+              method="POST"
+              action="{{ url_for('mark_done') }}"
+              style="display:inline"
+            >
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="task_index" value="{{ loop.index0 }}">
+              <input type="submit" value="Отметить как выполненную">
+            </form>
+          {% endif %}
+        </li>
+      {% endfor %}
     </ul>
   {% else %}
     <p>Пока задач нет, но скоро мы их добавим!</p>
