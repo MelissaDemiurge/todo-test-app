@@ -11,17 +11,23 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY')
+app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY') or 'temporary_fallback'
 
 csrf = CSRFProtect(app)
 
+
 class TaskForm(FlaskForm):
-    title = StringField(label='Название задачи', validators=[DataRequired(message='Нельзя добавить пустую задачу')])
+    title = StringField(
+        label='Название задачи',
+        validators=[DataRequired(message='Нельзя добавить пустую задачу')]
+    )
     submit = SubmitField('Добавить')
+
 
 class MarkDoneForm(FlaskForm):
     task_index = HiddenField(validators=[DataRequired()])
     submit = SubmitField('Отметить как выполненную')
+
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -31,12 +37,21 @@ def index():
     session.setdefault('tasks', [])
 
     if task_form.validate_on_submit():
-        session['tasks'].append({'title': task_form.title.data.strip(), 'done': False})
+        session['tasks'].append({
+            'title': task_form.title.data.strip(),
+            'done': False
+        })
         session.modified = True
-        flash('Задача добавлена', 'succes')
+        flash('Задача добавлена', 'success')
         return redirect(url_for('index'))
 
-    return render_template('index.html', tasks=session['tasks'], task_form=task_form, mark_form=mark_form)
+    return render_template(
+        'index.html',
+        tasks=session['tasks'],
+        task_form=task_form,
+        mark_form=mark_form
+    )
+
 
 @app.route('/mark_done', methods=['POST'])
 def mark_done():
@@ -54,8 +69,9 @@ def mark_done():
             flash('Индекс задачи должен быть числом', 'danger')
     else:
         flash('Не удалось подтвердить действие', 'danger')
-    
+
     return redirect(url_for('index'))
+
 
 if __name__ == '__main__':
     app.run(debug=True)
