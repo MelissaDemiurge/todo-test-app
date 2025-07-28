@@ -1,0 +1,35 @@
+[33mcommit 3599627037ccb1c30dc73b0fe34182ced0e0dece[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/master[m[33m)[m
+Author: Melissa_Demiurge <melissademiurgy@gmail.com>
+Date:   Mon Jul 28 13:06:26 2025 +0500
+
+    Готовая версия без sqlite
+
+[33mcommit a48b66388b6d420b447532df6cc69042a2838cbd[m
+Author: Melissa_Demiurge <melissademiurgy@gmail.com>
+Date:   Sat Jul 26 14:56:59 2025 +0500
+
+    базовый css + редакт/удаление без улучшения кода
+
+[33mcommit e4b05128b4ffbdbf6ff00e052a31daa0d94eb3ce[m
+Author: Melissa_Demiurge <melissademiurgy@gmail.com>
+Date:   Sat Jul 26 12:39:47 2025 +0500
+
+    для гитхаба
+
+[33mcommit 9588d4d38cece62e4da4cc85c94771cc9369be4c[m
+Author: Melissa_Demiurge <melissademiurgy@gmail.com>
+Date:   Fri Jul 25 21:41:30 2025 +0500
+
+    Обновленная улучшенная версия
+
+[33mcommit 7d5b960a3f4315a04bc616ee3536377bc0ea58f5[m
+Author: Melissa_Demiurge <melissademiurgy@gmail.com>
+Date:   Wed Jul 23 19:49:45 2025 +0500
+
+    Начальная версия с gitignore
+
+[33mcommit f374e3bc466ae1b682c7adf28c2b0c685eac2875[m
+Author: Melissa_Demiurge <melissademiurgy@gmail.com>
+Date:   Wed Jul 23 19:39:28 2025 +0500
+
+    Первая версия, без ключа
