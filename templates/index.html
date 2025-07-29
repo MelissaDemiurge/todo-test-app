@@ -1,61 +1,56 @@
-{% extends 'base.html' %}
-
+{% extends "base.html" %}
 {% block title %}Список задач{% endblock %}
-
 {% block content %}
-  <form method="POST" action="{{ url_for('index') }}">
-    {{ task_form.hidden_tag() }}
-    <p>
-      {{ task_form.title.label }}<br>
-      {{ task_form.title(size=40) }}<br>
-      {% for err in task_form.title.errors %}
-        <span style="color:red">{{ err }}</span><br>
-      {% endfor %}
-    </p>
-    {{ task_form.submit(class_="btn btn-add") }}
+  <form method="post">
+    {{ task_form.csrf_token() }}
+    <label for="{{ task_form.title.id }}">Название задачи</label><br>
+    {{ task_form.title(size=40) }}
+    <button type="submit" class="add-button">Добавить</button>
   </form>
 
-{% if tasks %}
-  <ul class="tasks">
+  {% if tasks %}
+    <ul class="tasks">
     {% for task in tasks %}
       <li>
-        {{ loop.index }}.
-        <span id="display-{{ loop.index0 }}">
-          {{ task.title }}
-          {% if task.done %}
-            — <strong>выполнено</strong>
-          {% else %}
-            — <em>не выполнено</em>
-            <form method="POST" action="{{ url_for('mark_done') }}" style="display:inline">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <input type="hidden" name="task_index" value="{{ loop.index0 }}">
-              <input type="submit" class="btn btn-done" value="Отметить как выполненную">
+        <!-- Просмотр -->
+        <div id="view-{{ loop.index0 }}" class="task-view">
+          <span class="{% if task.done %}task-done{% else %}task-undone{% endif %}">
+            {{ loop.index }}. {{ task.title }} —
+            {% if task.done %}выполнена{% else %}не выполнена{% endif %}
+          </span>
+
+          <div class="controls">
+            <button type="button" class="edit-button" onclick="editTask({{ loop.index0 }})">Редактировать</button>
+
+            {% if not task.done %}
+            <form action="{{ url_for('tasks.mark_done') }}" method="post" style="display:inline;">
+              {{ mark_form.csrf_token }}
+              {{ mark_form.task_index(value=loop.index0) }}
+              <button type="submit" class="done-button">Отметить как выполненную</button>
             </form>
-          {% endif %}
-          <button type="button" class="btn btn-edit" onclick="editTask({{ loop.index0 }})">Редактировать</button>
-          <form method="POST" action="{{ url_for('delete_task') }}" style="display:inline" onsubmit="return confirm('Вы точно хотите удалить?');">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="task_index" value="{{ loop.index0 }}">
-            <input type="submit" class="btn btn-delete" value="Удалить">
-          </form>
-        </span>
-        <span id="edit-{{ loop.index0 }}" style="display:none;">
-          <form method="POST" action="{{ url_for('edit_task') }}" style="display:inline">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="task_index" value="{{ loop.index0 }}">
-            <input type="text" name="title" value="{{ task.title }}" size="30" required>
-            <select name="done">
-              <option value="0" {% if not task.done %}selected{% endif %}>не выполнена</option>
-              <option value="1" {% if task.done %}selected{% endif %}>выполнена</option>
-            </select>
-            <button type="submit" class="btn btn-save">Сохранить</button>
-            <button type="button" class="btn btn-cancel" onclick="cancelEdit({{ loop.index0 }})">Отмена</button>
-          </form>
-        </span>
+            {% endif %}
+
+            <form action="{{ url_for('tasks.delete_task') }}" method="post" style="display:inline;">
+              {{ delete_form.csrf_token }}
+              {{ delete_form.task_index(value=loop.index0) }}
+              <button type="submit" class="delete-button">Удалить</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Редактирование -->
+        <form id="edit-{{ loop.index0 }}" class="edit-form" action="{{ url_for('tasks.edit_task') }}" method="post">
+          {{ edit_form.csrf_token }}
+          {{ edit_form.task_index(value=loop.index0) }}
+          {{ edit_form.title(size=40, value=task.title) }}
+          <label><input type="checkbox" name="done" {% if task.done %}checked{% endif %}> Выполнена</label>
+          <button type="submit" class="save-button">Сохранить</button>
+          <button type="button" class="cancel-button" onclick="cancelEdit({{ loop.index0 }})">Отмена</button>
+        </form>
       </li>
     {% endfor %}
-  </ul>
-{% else %}
-  <p>Пока задач нет, но скоро мы их добавим!</p>
-{% endif %}
+    </ul>
+  {% else %}
+    <p class="no-tasks">Пока задач нет, но скоро мы их добавим!</p>
+  {% endif %}
 {% endblock %}
