@@ -4,7 +4,7 @@
   <form method="post">
     {{ task_form.csrf_token }}
     <label for="{{ task_form.title.id }}">Название задачи:</label><br>
-    {{ task_form.title(size=40) }}
+    {{ task_form.title(size=40, maxlength=24) }}
     {% for error in task_form.title.errors %}
       <span class="error">{{ error }}</span>
     {% endfor %}
@@ -42,7 +42,7 @@
         <form id="edit-{{ task.id }}" class="edit-form" action="{{ url_for('tasks.edit_task') }}" method="post">
           {{ edit_form.csrf_token }}
           {{ edit_form.task_id(value=task.id) }}
-          {{ edit_form.title(size=40, value=task.title) }}
+          {{ edit_form.title(size=40, value=task.title, maxlength=24) }}
           <label class="done-label">
             <input type="checkbox" name="done" {% if task.done %}checked{% endif %}> Выполнена
           </label>
