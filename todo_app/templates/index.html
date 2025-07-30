@@ -46,8 +46,10 @@
           <label class="done-label">
             <input type="checkbox" name="done" {% if task.done %}checked{% endif %}> Выполнена
           </label>
-          <button type="submit" class="save-button">Сохранить</button>
-          <button type="button" class="cancel-button" onclick="cancelEdit({{ task.id }})">Отмена</button>
+          <div class="edit-buttons">
+            <button type="submit" class="save-button">Сохранить</button>
+            <button type="button" class="cancel-button" onclick="cancelEdit({{ task.id }})">Отмена</button>
+          </div>
         </form>
       </li>
     {% endfor %}
