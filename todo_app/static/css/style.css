@@ -39,7 +39,7 @@ h1 {
 .tasks {
     list-style: none;
     padding: 0;
-    max-width: 600px;
+    max-width: 900px;;
     margin: 20px auto;
 }
 .tasks li {
@@ -50,17 +50,47 @@ h1 {
     border-radius: 5px;
 }
 
+
 /* Вид (просмотр) vs. режим редактирования задачи */
 .task-view {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: flex-start;
+    gap: 10px; /* Отступ между элементами */
+    min-width: 800px;
 }
 .task-view span {
-    flex: 1;  /* текст задачи занимает всю оставшуюся ширину */
+    flex-grow: 0;
+    min-width: 0;
+}
+
+.task-view .task-undone {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    margin-right: 10px;
+    font-weight: 500;
+    color: #212529;
+    background-color: #fff3cd;
+    border-left: 4px solid #ffc107;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+/* Контейнер с кнопками */
+.task-view .controls {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+    white-space: nowrap;
 }
 
 /* Оформление текста задачи в зависимости от статуса */
+.task-done {
+    text-decoration: line-through;
+    color: #6c757d;
+}
+
 .task-done {
     text-decoration: line-through;
     color: #6c757d;
@@ -72,6 +102,10 @@ h1 {
     border-left: 4px solid #ffc107;
     padding: 4px 8px;
     border-radius: 4px;
+    margin-right: 10px;
+    overflow-wrap: normal;
+    white-space: nowrap;
+    min-width: 600px;
 }
 
 /* Блок управления задачей (кнопки справа) */
@@ -89,6 +123,7 @@ h1 {
     width: 60%;
     padding: 5px;
     margin-right: 10px;
+    margin-bottom: 8px;
 }
 .edit-form input[type="checkbox"] {
     transform: scale(1.2);
@@ -131,4 +166,8 @@ button:hover, input[type="submit"]:hover {
     text-align: center;
     color: #6c757d;
     font-style: italic;
+}
+
+.edit-buttons {
+    margin-top: 10px
 }
