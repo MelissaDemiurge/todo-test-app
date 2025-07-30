@@ -8,15 +8,15 @@ class TaskForm(FlaskForm):
     submit = SubmitField('Добавить')
 
 class MarkDoneForm(FlaskForm):
-    task_index = HiddenField(validators=[DataRequired()])
+    task_id = HiddenField(validators=[DataRequired()])
     submit = SubmitField('Отметить как выполненную')
 
 class DeleteForm(FlaskForm):
-    task_index = HiddenField(validators=[DataRequired()])
+    task_id = HiddenField(validators=[DataRequired()])
     submit = SubmitField('Удалить')
 
 class EditForm(FlaskForm):
-    task_index = HiddenField(validators=[DataRequired()])
+    task_id = HiddenField(validators=[DataRequired()])
     title = StringField('Название задачи',
                         validators=[DataRequired(message='Название не может быть пустым')])
     done = BooleanField('Выполнена')
