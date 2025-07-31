@@ -30,7 +30,7 @@ def index():
         if existing:
             flash(f'Задача "{title}" уже существует', 'warning')
         else:
-            new_task = Task(title=title)
+            new_task = Task(title=title, done=False)
             db.session.add(new_task)
             db.session.commit()
             flash('Задача добавлена', 'success')
@@ -82,7 +82,7 @@ def edit_task():
                 flash(f'Название "{new_title}" уже используется другой задачей', 'warning')
             else:
                 task.title = new_title
-                task.done = bool(form.done.data)
+                task.done = True if form.done.data else False
                 db.session.commit()
                 flash(f'Задача "{task.title}" обновлена', 'success')
     else:

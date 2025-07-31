@@ -6,7 +6,7 @@ class TaskForm(FlaskForm):
     title = StringField('Название задачи',
                         validators=[
                             DataRequired(message='Нельзя добавить пустую задачу'),
-                            Length(max=24, message='Название должно быть не длиннее 24 символов')
+                            Length(max=24, message='Название должно быть не длиннее 100 символов')
                         ])
     submit = SubmitField('Добавить')
 
@@ -23,7 +23,7 @@ class EditForm(FlaskForm):
     title = StringField('Название задачи',
         validators=[
             DataRequired(message='Название не может быть пустым'),
-            Length(max=24, message='Название должно быть не длиннее 24 символов')
+            Length(max=24, message='Название должно быть не длиннее 100 символов')
         ])
     done = BooleanField('Выполнена')
     submit = SubmitField('Сохранить')

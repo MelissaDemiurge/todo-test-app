@@ -39,7 +39,7 @@ h1 {
 .tasks {
     list-style: none;
     padding: 0;
-    max-width: 900px;
+    max-width: 900px;;
     margin: 20px auto;
 }
 .tasks li {
@@ -64,6 +64,19 @@ h1 {
     min-width: 0;
 }
 
+.task-view .task-undone {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    margin-right: 10px;
+    font-weight: 500;
+    color: #212529;
+    background-color: #fff3cd;
+    border-left: 4px solid #ffc107;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
 /* Контейнер с кнопками */
 .task-view .controls {
     display: flex;
@@ -73,6 +86,11 @@ h1 {
 }
 
 /* Оформление текста задачи в зависимости от статуса */
+.task-done {
+    text-decoration: line-through;
+    color: #6c757d;
+}
+
 .task-done {
     text-decoration: line-through;
     color: #6c757d;
@@ -151,5 +169,5 @@ button:hover, input[type="submit"]:hover {
 }
 
 .edit-buttons {
-    margin-top: 10px;
+    margin-top: 10px
 }
