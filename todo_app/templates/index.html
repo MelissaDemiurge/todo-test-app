@@ -30,7 +30,7 @@
               <button type="submit" class="done-button">Отметить как выполненную</button>
             </form>
             {% endif %}
-            <form action="{{ url_for('tasks.delete_task') }}" method="post" class="inline-form">
+            <form action="{{ url_for('tasks.delete_task') }}" method="post" class="inline-form" onsubmit="return confirm('Вы точно хотите удалить?')";>
               {{ delete_form.csrf_token }}
               {{ delete_form.task_id(value=task.id) }}
               <button type="submit" class="delete-button">Удалить</button>

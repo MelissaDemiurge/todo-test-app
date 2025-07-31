@@ -39,7 +39,7 @@ h1 {
 .tasks {
     list-style: none;
     padding: 0;
-    max-width: 900px;;
+    max-width: 900px;
     margin: 20px auto;
 }
 .tasks li {
@@ -68,13 +68,6 @@ h1 {
     flex: 1 1 auto;
     min-width: 0;
     overflow-wrap: anywhere;
-    margin-right: 10px;
-    font-weight: 500;
-    color: #212529;
-    background-color: #fff3cd;
-    border-left: 4px solid #ffc107;
-    padding: 4px 8px;
-    border-radius: 4px;
 }
 
 /* Контейнер с кнопками */
@@ -91,21 +84,20 @@ h1 {
     color: #6c757d;
 }
 
-.task-done {
-    text-decoration: line-through;
-    color: #6c757d;
-}
+
 .task-undone {
-    font-weight: 500;
-    color: #212529;
-    background-color: #fff3cd;
-    border-left: 4px solid #ffc107;
-    padding: 4px 8px;
-    border-radius: 4px;
-    margin-right: 10px;
-    overflow-wrap: normal;
-    white-space: nowrap;
-    min-width: 600px;
+  font-weight: 500;
+  color: #212529;
+  background-color: #fff3cd;
+  border-left: 4px solid #ffc107;
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-right: 10px;
+
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  min-width: 200px;
 }
 
 /* Блок управления задачей (кнопки справа) */
@@ -169,5 +161,28 @@ button:hover, input[type="submit"]:hover {
 }
 
 .edit-buttons {
-    margin-top: 10px
+    margin-top: 10px;
+}
+
+/* Красивое оформление input-полей задач */
+input[type="text"] {
+    width: 20%;
+    padding: 4px 8px;
+    font-size: 1em;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    background-color: #ffffff;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Эффект при фокусе */
+input[type="text"]:focus {
+    border-color: #80bdff;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+}
+
+/* Для текстового поля в форме добавления задачи */
+form > input[type="text"] {
+    margin-bottom: 10px;
 }

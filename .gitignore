@@ -1,5 +1,47 @@
+# === Python cache ===
 __pycache__/
-.env
-*.pyc
+*.py[cod]
+*.pyo
+
+# === Flask / SQLAlchemy ===
 *.db
+*.sqlite
+instance/
+migrations/versions/__pycache__/
+
+# === Virtual environments ===
 venv/
+env/
+
+# === VSCode, PyCharm, JetBrains ===
+.vscode/
+.idea/
+
+# === Environment / конфигурация ===
+.env
+.flaskenv
+*.env
+
+# === System files ===
+.DS_Store
+Thumbs.db
+
+# === Logs / dumps ===
+*.log
+*.pid
+
+# === Windows specific ===
+*.exe
+*.dll
+*.bat
+
+# === macOS specific ===
+*.DS_Store
+
+# === Node (на будущее, если появится) ===
+node_modules/
+
+# === PyInstaller build ===
+build/
+dist/
+*.spec
