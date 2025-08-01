@@ -1,0 +1,46 @@
+{% if tasks and tasks|length > 0 %}
+<ul class="tasks">
+    {% for task in tasks %}
+    <li>
+        <!-- Блок просмотра задачи -->
+         <div id="view-{{ task.id }}" class="task-view">
+            <span class="{% if task.done %}task-done{% else %}task-undone{% endif %}">
+                {{ loop.index }}. {{ task.title }} —
+                {% if task.done %}выполнена{% else %}не выполнена{% endif %}
+            </span>
+            <div class="controls">
+                <button type="submit" class="edit-button" data-id="{{ task.id }}">Редактировать</button>
+                {% if not task.done %}
+                <form action="{{ url_for('tasks.mark_done') }}" method="post" class="inline-form mark-done-form">
+                    {{ mark_form.csrf_token }}
+                    {{ mark_form.task_id(value=task.id) }}
+                    <button type="submit" class="done-button">Отметить как выполненную</button>
+                </form>
+                {% endif %}
+                <form action="{{ url_for('tasks.delete_task') }}" method="post" class="inline-form delete-form">
+                    {{ delete_form.csrf_token }}
+                    {{ delete_form.task_id(value=task.id) }}
+                    <button type="submit" class="delete-button">Удалить</button>
+                </form>
+            </div>
+         </div>
+
+         <!-- Форма редактирования задачи -->
+          <form id="edit-{{ task.id }}" class="edit-form edit-task-form" action="{{ url_for('tasks.edit_task') }}" method="post">
+            {{ edit_form.csrf_token }}
+            {{ edit_form.task_id(value=task.id) }}
+            {{ edit_form.title(size=40, value=task.title, maxlength=24) }}
+            <label class="done-label">
+                <input type="checkbox" name="done" {% if task.done %}checked{% endif %}> Выполнена
+            </label>
+            <div class="edit-buttons">
+                <button type="submit" class="save-button">Сохранить</button>
+                <button type="button" class="cancel-button" data-id="{{ task.id }}">Отмена</button>
+            </div>
+          </form>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<p class="no-tasks">Пока задач нет, но скоро мы их добавим</p>
+{% endif %}

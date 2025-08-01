@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash
+from flask import Blueprint, render_template, redirect, url_for, flash, request
 from .forms import TaskForm, MarkDoneForm, DeleteForm, EditForm
 from .models import db, Task
 
@@ -34,6 +34,8 @@ def index():
             db.session.add(new_task)
             db.session.commit()
             flash('Задача добавлена', 'success')
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return '', 204
             return redirect(url_for('tasks.index'))
     # Если форма не валидна или название дублирует существующее, попадем сюда (отобразим страницу заново)
 
@@ -55,6 +57,8 @@ def mark_done():
             flash(f'Задача "{task.title}" отмечена выполненной', 'info')
     else:
         flash('Не удалось подтвердить действие', 'danger')
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return '', 204
     return redirect(url_for('tasks.index'))
 
 @tasks_bp.route('/delete', methods=['POST'])
@@ -68,6 +72,8 @@ def delete_task():
             flash(f'Задача "{task.title}" удалена', 'info')
     else:
         flash('Не удалось подтвердить действие', 'danger')
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return '', 204
     return redirect(url_for('tasks.index'))
 
 @tasks_bp.route('/edit', methods=['POST'])
@@ -87,4 +93,34 @@ def edit_task():
                 flash(f'Задача "{task.title}" обновлена', 'success')
     else:
         flash('Не удалось подтвердить действие', 'danger')
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return '', 204
     return redirect(url_for('tasks.index'))
+
+@tasks_bp.route('/tasks_data', methods=['GET'])
+def tasks_data():
+    filter_val = request.args.get('filter', 'all')
+    search_term = request.args.get('q', '').strip()
+    sort_order = request.args.get('sort', 'asc')
+
+    query = Task.query
+
+    if filter_val == 'done':
+        query = query.filter_by(done=True)
+    elif filter_val == 'undone':
+        query = query.filter_by(done=False)
+
+    if search_term:
+        query = query.filter(Task.title.ilike(f'%{search_term}%'))
+
+    if sort_order == 'asc':
+        query = query.order_by(Task.date_created.asc())
+    else:
+        query = query.order_by(Task.date_created.desc())
+
+    filtered_tasks = query.all()
+    mark_form = MarkDoneForm()
+    delete_form = DeleteForm()
+    edit_form = EditForm()
+
+    return render_template('tasks_list_partial.html', tasks=filtered_tasks, mark_form=mark_form, delete_form=delete_form, edit_form=edit_form)
