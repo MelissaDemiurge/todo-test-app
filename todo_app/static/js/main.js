@@ -1,5 +1,5 @@
-document.addEventListener('DOMContentLoaded', function() {
-    // 1. Автоматическое скрытие flash-сообщений через несколько секунд (без изменений)
+document.addEventListener('DOMContentLoaded', function () {
+    // 1. Авто-скрытие flash-сообщений
     const flashMessages = document.querySelector('.flashes');
     if (flashMessages) {
         setTimeout(() => {
@@ -9,142 +9,107 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 5000);
     }
 
-    // 2. Находим элементы панели фильтрации и поиска
     const tasksContainer = document.getElementById('tasks-container');
     const filterButtons = document.querySelectorAll('.filter-button');
     const sortSelect = document.getElementById('sortSelect');
     const searchInput = document.getElementById('searchInput');
-
-    // Текущее состояние фильтра и сортировки (будем хранить, чтобы включать в запросы)
     let currentFilter = 'all';
     let currentSort = 'asc';
 
-    // 3. Функция AJAX-запроса для получения отфильтрованного списка задач
     function fetchTasksAndUpdate() {
-        // Строим URL запроса с учетом фильтра, сортировки и поискового запроса
         let url = `/tasks_data?filter=${currentFilter}&sort=${currentSort}`;
         const query = searchInput.value.trim();
         if (query) {
             url += `&q=${encodeURIComponent(query)}`;
         }
 
-        // Отправляем GET-запрос на сервер (AJAX)
         fetch(url)
             .then(response => {
-                if (!response.ok) {
-                    throw new Error('Ошибка сети при получении задач');
-                }
-                return response.text();  // сервер возвращает HTML-код списка задач
+                if (!response.ok) throw new Error('Ошибка при получении задач');
+                return response.text();
             })
             .then(html => {
-                // Заменяем содержимое контейнера списка задач новым HTML
                 tasksContainer.innerHTML = html;
-                // Заново привязываем обработчики для новых элементов списка
-                attachTaskActions();
+                attachTaskActions(); // привязать обработчики к новым элементам
             })
-            .catch(error => {
-                console.error('Ошибка при обновлении списка задач:', error);
-            });
+            .catch(error => console.error(error));
     }
 
-    // 4. Обработчики кликов по кнопкам фильтров
+    // 2. Обновление фильтра/сортировки/поиска
     filterButtons.forEach(button => {
         button.addEventListener('click', () => {
-            currentFilter = button.getAttribute('data-filter');  // читаем тип фильтра (all/done/undone)
-            // Обновляем визуально выделение активной кнопки
+            currentFilter = button.getAttribute('data-filter');
             filterButtons.forEach(btn => btn.classList.remove('active'));
             button.classList.add('active');
-            // Получаем и отображаем отфильтрованный список
             fetchTasksAndUpdate();
         });
     });
 
-    // 5. Обработчик изменения сортировки (выбор в select)
     sortSelect.addEventListener('change', () => {
         currentSort = sortSelect.value;
         fetchTasksAndUpdate();
     });
 
-    // 6. Обработчик ввода в поле поиска (с задержкой - "debounce")
     let searchTimeout;
     searchInput.addEventListener('input', () => {
         clearTimeout(searchTimeout);
-        // Немного задерживаем запрос (300 мс) чтобы не дергать сервер на каждую букву
         searchTimeout = setTimeout(() => {
             fetchTasksAndUpdate();
         }, 300);
     });
 
-    // 7. Функция для привязки AJAX-обработчиков к действиям задач (выполнить, удалить, редактировать)
-    function attachTaskActions() {
-        // a) Отметка задачи выполненной
-        document.querySelectorAll('form.mark-done-form').forEach(form => {
-            form.addEventListener('submit', function(e) {
+    // 3. Универсальный обработчик AJAX-отправки форм
+    function setupAjaxForm(selector, options = {}) {
+        document.querySelectorAll(selector).forEach(form => {
+            form.addEventListener('submit', e => {
                 e.preventDefault();
-                const formData = new FormData(form);
-                fetch(form.action, { method: 'POST', body: formData, redirect: 'manual' })
-                    .then(response => {
-                        if (response.status < 400) {  // Обрабатываем 302 как успех
-                            return fetchTasksAndUpdate();
-                        } else {
-                            throw new Error('Ошибка при отметке выполнения');
-                        }
-                    })
-                    .catch(err => console.error(err));
-            });
-        });
-
-        // b) Удаление задачи
-        document.querySelectorAll('form.delete-form').forEach(form => {
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-                if (!confirm('Вы точно хотите удалить?')) {
+                if (options.confirm && !confirm(options.confirm)) {
                     return;
                 }
                 const formData = new FormData(form);
-                fetch(form.action, { method: 'POST', body: formData, redirect: 'manual' })
+                fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    redirect: 'manual'
+                })
                     .then(response => {
-                        if (response.status < 400) {  // Обрабатываем 302 как успех
+                        if (response.status < 400) {
                             return fetchTasksAndUpdate();
                         } else {
-                            throw new Error('Ошибка при удалении задачи');
+                            throw new Error(options.errorMessage || 'Ошибка при отправке формы');
                         }
                     })
                     .catch(err => console.error(err));
             });
         });
+    }
 
-        // c) Сохранение отредактированной задачи
-        document.querySelectorAll('form.edit-task-form').forEach(form => {
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-                const formData = new FormData(form);
-                fetch(form.action, { method: 'POST', body: formData, redirect: 'manual' })
-                    .then(response => {
-                        if (response.status < 400) {  // Обрабатываем 302 как успех
-                            return fetchTasksAndUpdate();
-                        } else {
-                            throw new Error('Ошибка при редактировании задачи');
-                        }
-                    })
-                    .catch(err => console.error(err));
-            });
+    function attachTaskActions() {
+        setupAjaxForm('form.mark-done-form', {
+            errorMessage: 'Ошибка при отметке выполнения'
+        });
+        setupAjaxForm('form.delete-form', {
+            confirm: 'Вы точно хотите удалить?',
+            errorMessage: 'Ошибка при удалении задачи'
+        });
+        setupAjaxForm('form.edit-task-form', {
+            errorMessage: 'Ошибка при редактировании задачи'
         });
 
-        // d) Кнопки "Редактировать" – показать форму редактирования вместо текста
+        // Показ формы редактирования
         document.querySelectorAll('button.edit-button').forEach(button => {
             button.addEventListener('click', () => {
-                const id = button.getAttribute('data-id');      // получаем ID задачи из атрибута
-                const viewDiv = document.getElementById(`view-${id}`);   // текущий блок просмотра
-                const editForm = document.getElementById(`edit-${id}`);  // соответствующая форма редактирования
+                const id = button.getAttribute('data-id');
+                const viewDiv = document.getElementById(`view-${id}`);
+                const editForm = document.getElementById(`edit-${id}`);
                 if (viewDiv && editForm) {
-                    viewDiv.style.display = 'none';    // скрываем текстовый блок
-                    editForm.style.display = 'block';  // показываем форму редактирования
+                    viewDiv.style.display = 'none';
+                    editForm.style.display = 'block';
                 }
             });
         });
 
-        // e) Кнопки "Отмена" – закрыть форму редактирования, вернуть вид просмотра
+        // Отмена редактирования
         document.querySelectorAll('button.cancel-button').forEach(button => {
             button.addEventListener('click', () => {
                 const id = button.getAttribute('data-id');
@@ -152,19 +117,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 const editForm = document.getElementById(`edit-${id}`);
                 if (viewDiv && editForm) {
                     editForm.style.display = 'none';
-                    viewDiv.style.display = 'flex';  // возвращаем как flex (было flex-контейнером)
+                    viewDiv.style.display = 'flex';
                 }
             });
         });
     }
 
-    // Привязываем обработчики к уже загруженному при старте списку задач
+    // 4. Привязка к уже загруженному списку
     attachTaskActions();
 
-    // 8. AJAX-отправка формы добавления новой задачи
+    // 5. AJAX-добавление новой задачи
     const addTaskForm = document.getElementById('add-task-form');
     if (addTaskForm) {
-        addTaskForm.addEventListener('submit', function(e) {
+        addTaskForm.addEventListener('submit', function (e) {
             e.preventDefault();
             const formData = new FormData(addTaskForm);
             fetch(addTaskForm.action || window.location.href, {
@@ -173,7 +138,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
                 .then(response => {
-                    console.log('Status for add:', response.status);
                     if (response.status === 204) {
                         addTaskForm.reset();
                         fetchTasksAndUpdate();
