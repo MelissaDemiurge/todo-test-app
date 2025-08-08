@@ -6,7 +6,7 @@
   <form id="add-task-form" method="POST">
     {{ task_form.csrf_token }}
     Название задачи:
-    {{ task_form.title(size=40, maxlength=24) }}
+    {{ task_form.title(maxlength=24) }}
     {% for error in task_form.title.errors %}
       <span class="error">{{ error }}</span>
     {% endfor %}

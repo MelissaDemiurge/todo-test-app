@@ -1,8 +1,10 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
-from todo_app.forms import TaskForm, MarkDoneForm, DeleteForm, EditForm
+from flask import Blueprint, render_template, redirect, url_for, request, jsonify
+from sqlalchemy.exc import IntegrityError
+from todo_app.forms import TaskForm, MarkDoneForm, DeleteForm, EditForm, BulkDeleteForm
 from todo_app.models import db, Task
 from todo_app.services import get_tasks
-from todo_app.utils import ajax_required  # 🔽 декоратор обработки форм
+from todo_app.utils import ajax_required
+from sqlalchemy import delete
 
 tasks_bp = Blueprint('tasks', __name__)
 
@@ -11,80 +13,149 @@ def get_task_by_id(id_str):
     try:
         task_id = int(id_str)
     except ValueError:
-        flash('Идентификатор задачи должен быть числом', 'danger')
         return None
-
-    task = Task.query.get(task_id)
-    if task is None:
-        flash('Задача с указанным ID не найдена', 'warning')
-    return task
-
+    return db.session.get(Task, task_id)
 
 @tasks_bp.route('/', methods=['GET', 'POST'])
 def index():
+    """Главная: список задач и добавление.
+    AJAX: 204 на успех, 400 с HTML-ошибкой при невалидных данных.
+    """
     task_form = TaskForm()
     mark_form = MarkDoneForm()
     delete_form = DeleteForm()
     edit_form = EditForm()
+    bulk_form = BulkDeleteForm()
 
-    tasks_list = get_tasks()  # 🔽 теперь через сервис
+    # Начальная загрузка страницы: покажем первую страницу задач
+    page, per_page = 1, 15
+    items, total = get_tasks(page=page, per_page=per_page)
+
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
     if task_form.validate_on_submit():
-        title = task_form.title.data.strip()
-        existing = Task.query.filter_by(title=title).first()
-        if existing:
-            flash(f'Задача "{title}" уже существует', 'warning')
-        else:
-            new_task = Task(title=title)
-            db.session.add(new_task)
+        title = task_form.title.data
+        new_task = Task(title=title)
+        db.session.add(new_task)
+        try:
             db.session.commit()
-            flash('Задача добавлена', 'success')
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return '', 204
+        except IntegrityError:
+            db.session.rollback()
+            msg = f'Задача "{title}" уже существует'
+            if is_ajax:
+                return jsonify({"success": False, "message": msg}), 400
+            task_form.title.errors.append(msg)
+        else:
+            if is_ajax:
+                return jsonify({
+                    "success": True,
+                    "message": "Задача добавлена",
+                    "patch": {
+                        "id": new_task.id,
+                        "title": new_task.title,
+                        "done": new_task.done
+                    }
+                }), 200
             return redirect(url_for('tasks.index'))
+    else:
+        if request.method == 'POST' and is_ajax:
+            error_msg = task_form.title.errors[0] if task_form.title.errors else next(iter(next(iter(task_form.errors.values()), ["Некорректные данные формы"]) ), "Некорректные данные формы")
+            return jsonify({"success": False, "message": error_msg}), 400
 
     return render_template('index.html',
-                           tasks=tasks_list,
+                           tasks=items,
+                           page=page,
+                           per_page=per_page,
+                           total=total,
                            task_form=task_form,
                            mark_form=mark_form,
                            delete_form=delete_form,
-                           edit_form=edit_form)
+                           edit_form=edit_form,
+                           bulk_form=bulk_form)
 
 
 @tasks_bp.route('/mark_done', methods=['POST'])
 @ajax_required(MarkDoneForm)
 def mark_done(form):
+    """Отметить задачу как выполненную (поддерживает AJAX)."""
     task = get_task_by_id(form.task_id.data)
-    if task:
-        task.done = True
-        db.session.commit()
-        flash(f'Задача "{task.title}" отмечена выполненной', 'info')
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    if not task:
+        if is_ajax:
+            return jsonify({"success": False, "message": "Задача не найдена"}), 400
+        return redirect(url_for('tasks.index'))
+
+    task.done = True
+    db.session.commit()
+    if is_ajax:
+        return jsonify({
+            "success": True,
+            "message": f'Задача "{task.title}" отмечена выполненной',
+            "patch": {
+                "id": task.id,
+                "done": task.done
+            }
+        }), 200
+    return redirect(url_for('tasks.index'))
 
 
 @tasks_bp.route('/delete', methods=['POST'])
 @ajax_required(DeleteForm)
 def delete_task(form):
+    """Удалить задачу (поддерживает AJAX)."""
     task = get_task_by_id(form.task_id.data)
-    if task:
-        db.session.delete(task)
-        db.session.commit()
-        flash(f'Задача "{task.title}" удалена', 'info')
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    if not task:
+        if is_ajax:
+            return jsonify({"success": False, "message": "Задача не найдена"}), 400
+        return redirect(url_for('tasks.index'))
+
+    title_for_msg = task.title
+    db.session.delete(task)
+    db.session.commit()
+    if is_ajax:
+        return jsonify({
+            "success": True,
+            "message": f'Задача "{title_for_msg}" удалена',
+            "patch": {
+                "id": task.id,
+                "deleted": True
+            }
+        }), 200
+    return redirect(url_for('tasks.index'))
 
 
 @tasks_bp.route('/edit', methods=['POST'])
 @ajax_required(EditForm)
 def edit_task(form):
+    """Редактировать заголовок/статус задачи (поддерживает AJAX)."""
     task = get_task_by_id(form.task_id.data)
-    if task:
-        new_title = form.title.data.strip()
-        duplicate = Task.query.filter_by(title=new_title).first()
-        if duplicate and duplicate.id != task.id:
-            flash(f'Название "{new_title}" уже используется другой задачей', 'warning')
-        else:
-            task.title = new_title
-            task.done = bool(form.done.data)
-            db.session.commit()
-            flash(f'Задача "{task.title}" обновлена', 'success')
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    if not task:
+        if is_ajax:
+            return jsonify({"success": False, "message": "Задача не найдена"}), 400
+        return redirect(url_for('tasks.index'))
+
+    new_title = form.title.data
+    task.title = new_title
+    task.done = bool(form.done.data)
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        form.title.errors.append(f'Название "{new_title}" уже используется другой задачей')
+    else:
+        if is_ajax:
+            return jsonify({
+                "success": True,
+                "message": f'Задача "{task.title}" обновлена',
+                "patch": {
+                    "id": task.id,
+                    "title": task.title,
+                    "done": task.done
+                }
+            }), 200
+        return redirect(url_for('tasks.index'))
 
 
 @tasks_bp.route('/tasks_data', methods=['GET'])
@@ -93,13 +164,62 @@ def tasks_data():
     search_term = request.args.get('q', '').strip()
     sort_order = request.args.get('sort', 'asc')
 
-    filtered_tasks = get_tasks(filter_val, search_term, sort_order)
+    try:
+        page = int(request.args.get('page', '1'))
+        per_page = int(request.args.get('per_page', '15'))
+    except ValueError:
+        page, per_page = 1, 15
+    # Ограничиваем размер страницы от 1 до 100
+    per_page = min(max(per_page, 1), 100)
+
+    # Первая выборка, чтобы узнать total
+    items, total = get_tasks(filter_val, search_term, sort_order, page=page, per_page=per_page)
+    # Корректируем границы страниц: минимум 1 страница даже при total=0
+    total_pages = (total + per_page - 1) // per_page
+    if total_pages < 1:
+        total_pages = 1
+    if page < 1:
+        page = 1
+    if page > total_pages:
+        page = total_pages
+        # Перечитываем элементы для скорректированной страницы
+        items, total = get_tasks(filter_val, search_term, sort_order, page=page, per_page=per_page)
     mark_form = MarkDoneForm()
     delete_form = DeleteForm()
     edit_form = EditForm()
 
+    bulk_form = BulkDeleteForm()
     return render_template('tasks_list_partial.html',
-                           tasks=filtered_tasks,
+                           tasks=items,
+                           page=page,
+                           per_page=per_page,
+                           total=total,
                            mark_form=mark_form,
                            delete_form=delete_form,
-                           edit_form=edit_form)
+                           edit_form=edit_form,
+                           bulk_form=bulk_form)
+
+
+@tasks_bp.route('/bulk_delete', methods=['POST'])
+@ajax_required(BulkDeleteForm)
+def bulk_delete(form):
+    # 1) распарсить ids
+    raw = (form.ids.data or '').strip()
+    try:
+        ids = [int(x) for x in raw.split(',') if x.strip()]
+    except ValueError:
+        return jsonify({"success": False, "message": "Некорректные идентификаторы"}), 400
+    if not ids:
+        return jsonify({"success": False, "message": "Не выбрано ни одной задачи"}), 400
+
+    # 2) удалить все за один запрос (SQLAlchemy 2.0 style)
+    stmt = delete(Task).where(Task.id.in_(ids))
+    result = db.session.execute(stmt)   # result.rowcount может быть None на некоторых БД
+    db.session.commit()
+
+    # 3) ответ
+    return jsonify({
+        "success": True,
+        "message": f"Удалено задач: {len(ids)}",
+        "patch": {"deleted_ids": ids}
+    }), 200

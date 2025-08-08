@@ -1,25 +1,38 @@
-{% if tasks and tasks|length > 0 %}
+<form class="bulk-actions-top bulk-delete-form" action="{{ url_for('tasks.bulk_delete') }}" method="post">
+  <hr/>
+  {{ bulk_form.csrf_token(id='csrf-bulk-top') }}
+  {{ bulk_form.ids(id='bulk-ids-top', type='hidden') }}
+  <div class="bulk-row">
+    <label class="select-all" for="select-all-top">
+      <input type="checkbox" id="select-all-top"> Выбрать всё
+    </label>
+    <span class="selected-count" id="selected-count-top"></span>
+    <button type="submit" class="delete-button" disabled>Удалить выбранные</button>
+  </div>
+  <hr/>
+</form>
+
 <ul class="tasks">
     {% for task in tasks %}
-    <li>
+    <li id="task-{{ task.id }}">
+        <input type="checkbox" class="task-select" data-id="{{ task.id }}" aria-label="Выбрать задачу {{ task.id }}">
         <!-- Блок просмотра задачи -->
          <div id="view-{{ task.id }}" class="task-view">
-            <span class="{% if task.done %}task-done{% else %}task-undone{% endif %}">
-                {{ loop.index }}. {{ task.title }} —
-                {% if task.done %}выполнена{% else %}не выполнена{% endif %}
-            </span>
+            <span class="task-index">{{ (page - 1) * per_page + loop.index }}.</span>
+            <span id="title-{{ task.id }}" class="task-title {% if task.done %}task-done{% else %}task-undone{% endif %}">{{ task.title }}</span>
+            <span id="status-{{ task.id }}" class="task-status">{% if task.done %}выполнена{% else %}не выполнена{% endif %}</span>
             <div class="controls">
                 <button type="submit" class="edit-button" data-id="{{ task.id }}">Редактировать</button>
                 {% if not task.done %}
                 <form action="{{ url_for('tasks.mark_done') }}" method="post" class="inline-form mark-done-form">
-                    {{ mark_form.csrf_token }}
-                    {{ mark_form.task_id(value=task.id) }}
+                    {{ mark_form.csrf_token(id='csrf-mark-' ~ task.id) }}
+                    {{ mark_form.task_id(value=task.id, id='task_id-mark-' ~ task.id) }}
                     <button type="submit" class="done-button">Отметить как выполненную</button>
                 </form>
                 {% endif %}
                 <form action="{{ url_for('tasks.delete_task') }}" method="post" class="inline-form delete-form">
-                    {{ delete_form.csrf_token }}
-                    {{ delete_form.task_id(value=task.id) }}
+                    {{ delete_form.csrf_token(id='csrf-delete-' ~ task.id) }}
+                    {{ delete_form.task_id(value=task.id, id='task_id-delete-' ~ task.id) }}
                     <button type="submit" class="delete-button">Удалить</button>
                 </form>
             </div>
@@ -27,20 +40,27 @@
 
          <!-- Форма редактирования задачи -->
           <form id="edit-{{ task.id }}" class="edit-form edit-task-form" action="{{ url_for('tasks.edit_task') }}" method="post">
-            {{ edit_form.csrf_token }}
-            {{ edit_form.task_id(value=task.id) }}
-            {{ edit_form.title(size=40, value=task.title, maxlength=24) }}
-            <label class="done-label">
-                <input type="checkbox" name="done" {% if task.done %}checked{% endif %}> Выполнена
-            </label>
+            {{ edit_form.csrf_token(id='csrf-edit-' ~ task.id) }}
+            {{ edit_form.task_id(value=task.id, id='task_id-edit-' ~ task.id) }}
+            {{ edit_form.title(value=task.title, maxlength=24, id='title-input-' ~ task.id) }}
+            <div class="done-toggle">
+                {{ edit_form.done(id='done-' ~ task.id, checked=task.done) }}
+                <label for="done-{{ task.id }}">Выполнена</label>
+            </div>
             <div class="edit-buttons">
                 <button type="submit" class="save-button">Сохранить</button>
                 <button type="button" class="cancel-button" data-id="{{ task.id }}">Отмена</button>
             </div>
           </form>
     </li>
+    {% else %}
+    <li class="no-tasks">Задач для текущего фильтра нет</li>
     {% endfor %}
 </ul>
-{% else %}
-<p class="no-tasks">Пока задач нет, но скоро мы их добавим</p>
-{% endif %}
+{% set total_pages = (total // per_page) + (1 if total % per_page else 0) %}
+{% if total_pages < 1 %}{% set total_pages = 1 %}{% endif %}
+<div class="pagination" data-page="{{ page }}" data-per-page="{{ per_page }}" data-total="{{ total }}" data-total-pages="{{ total_pages }}">
+  <button type="button" class="page-prev" {% if page <= 1 %}disabled{% endif %}>Предыдущая</button>
+  <span class="page-info">Страница {{ page }} из {{ total_pages }}</span>
+  <button type="button" class="page-next" {% if page >= total_pages %}disabled{% endif %}>Следующая</button>
+</div>

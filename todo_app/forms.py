@@ -9,7 +9,8 @@ class TitleFormMixin:
         validators=[
             DataRequired(message='Название не может быть пустым'),
             Length(max=24, message='Название должно быть не длиннее 24 символов')
-        ]
+        ],
+        filters=[lambda s: s.strip() if s else s]
     )
 
 # 🔷 Общий миксин для скрытого поля task_id
@@ -32,3 +33,6 @@ class DeleteForm(FlaskForm, TaskIdFormMixin):
 class EditForm(FlaskForm, TitleFormMixin, TaskIdFormMixin):
     done = BooleanField('Выполнена')
     submit = SubmitField('Сохранить')
+
+class BulkDeleteForm(FlaskForm):
+    ids = StringField('ids', validators=[DataRequired(message='Не выбрано ни одной задачи')])

@@ -26,6 +26,7 @@ def upgrade():
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('title')
     )
+    # индексы не создаём в начальной миграции (возврат к прежнему состоянию)
     # ### end Alembic commands ###
 
 
