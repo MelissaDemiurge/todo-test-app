@@ -1,6 +1,10 @@
-document.addEventListener('DOMContentLoaded', function () {
-
+document.addEventListener('DOMContentLoaded', () => {
     const tasksContainer = document.getElementById('tasks-container');
+    const filterButtons = document.querySelectorAll('.filter-button');
+    const sortSelect = document.getElementById('sortSelect');
+    const searchInput = document.getElementById('searchInput');
+
+    // ---------- UI helpers ----------
     function ensureToastRoot() {
         let root = document.getElementById('toast-root');
         if (!root) {
@@ -13,6 +17,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         return root;
     }
+
     function showToast(message, type = 'info', timeoutMs = 3000) {
         const toastRoot = ensureToastRoot();
         const toast = document.createElement('div');
@@ -26,256 +31,377 @@ document.addEventListener('DOMContentLoaded', function () {
             setTimeout(() => toast.remove(), 400);
         }, timeoutMs);
     }
-    const filterButtons = document.querySelectorAll('.filter-button');
-    const sortSelect = document.getElementById('sortSelect');
-    const searchInput = document.getElementById('searchInput');
-    let currentFilter = 'all';
-    let currentSort = 'asc';
 
-    // Полный рефреш списка вместо сложных микропатчей — надёжнее
-    let currentPage = 1;
-    const perPage = 15;
+    const debounce = (fn, wait = 300) => {
+        let timeoutId;
+        return (...args) => {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => fn(...args), wait);
+        };
+    };
 
-    function fetchTasksAndUpdate() {
-        let url = `/tasks_data?filter=${currentFilter}&sort=${currentSort}&page=${currentPage}&per_page=${perPage}`;
-        const query = searchInput.value.trim();
-        if (query) {
-            url += `&q=${encodeURIComponent(query)}`;
-        }
+    // ---------- State ----------
+    const state = {
+        currentFilter: 'all',
+        currentSort: 'asc',
+        currentPage: 1,
+        perPage: 15,
+    };
 
-        fetch(url, { headers: { 'Accept': 'text/html' }, cache: 'no-store' })
-            .then(response => {
-                if (!response.ok) throw new Error('Ошибка при получении задач');
-                return response.text();
-            })
-            .then(html => {
-                tasksContainer.innerHTML = html;
-                attachTaskActions(); // привязать обработчики к новым элементам
-                // Синхронизируем текущую страницу по данным сервера
-                const pag = document.querySelector('.pagination');
-                if (pag) {
-                    const serverPage = Number(pag.getAttribute('data-page')) || 1;
-                    currentPage = Math.max(1, serverPage);
-                }
-                attachPagination();
-            })
-            .catch(error => console.error(error));
+    const buildTasksUrl = () => {
+        const params = new URLSearchParams({
+            filter: state.currentFilter,
+            sort: state.currentSort,
+            page: String(state.currentPage),
+            per_page: String(state.perPage),
+        });
+        const q = (searchInput && searchInput.value || '').trim();
+        if (q) params.set('q', q);
+        return `/tasks_data?${params.toString()}`;
+    };
+    // ----------- URL sync helpers -----------
+    function syncUrl() {
+        const params = new URLSearchParams({
+            filter: state.currentFilter,
+            sort: state.currentSort,
+            page: String(state.currentPage),
+            per_page: String(state.perPage),
+        });
+        const qVal = (searchInput && searchInput.value || '').trim();
+        if (qVal) params.set('q', qVal);
+        const newUrl = `${window.location.pathname}?${params.toString()}`;
+        history.pushState(null, '', newUrl);
     }
 
-    // Фильтрация/сортировка/поиск
-    filterButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            currentFilter = button.getAttribute('data-filter');
-            filterButtons.forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
-            currentPage = 1;
-            fetchTasksAndUpdate();
-        });
-    });
+    function applyUrlToState() {
+        const params = new URLSearchParams(window.location.search);
+        const filter = params.get('filter');
+        if (filter) state.currentFilter = filter;
+        const sort = params.get('sort');
+        if (sort) state.currentSort = sort;
+        const page = parseInt(params.get('page') || '1', 10);
+        if (!Number.isNaN(page) && page > 0) state.currentPage = page;
+        const perPage = parseInt(params.get('per_page') || '', 10);
+        if (!Number.isNaN(perPage) && perPage > 0) state.perPage = perPage;
+        const q = params.get('q');
+        if (searchInput && q !== null) searchInput.value = q;
+    }
 
-    sortSelect.addEventListener('change', () => {
-        currentSort = sortSelect.value;
-        currentPage = 1;
+    function reflectStateToUI() {
+        // Обновление фильтров
+        filterButtons.forEach((btn) => {
+            if (btn.getAttribute('data-filter') === state.currentFilter) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+        if (sortSelect) sortSelect.value = state.currentSort;
+    }
+
+    // Применяем параметры URL при первой загрузке
+    applyUrlToState();
+    reflectStateToUI();
+
+    // Поддержка кнопок «Назад/Вперёд»
+    window.addEventListener('popstate', () => {
+        applyUrlToState();
+        reflectStateToUI();
         fetchTasksAndUpdate();
     });
+    // Allow cancelling outdated list fetches (e.g., fast typing)
+    let tasksFetchController = null;
 
-    let searchTimeout;
-    searchInput.addEventListener('input', () => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            currentPage = 1;
+    const syncPaginationState = () => {
+        const pag = document.querySelector('.pagination');
+        if (!pag) {
+            state.currentPage = 1;
+            return;
+        }
+        const serverPage = Number(pag.getAttribute('data-page')) || 1;
+        state.currentPage = Math.max(1, serverPage);
+    };
+
+    const fetchTasksAndUpdate = async () => {
+        if (!tasksContainer) return;
+        // Abort previous fetch if still in-flight
+        if (tasksFetchController) tasksFetchController.abort();
+        tasksFetchController = new AbortController();
+        const url = buildTasksUrl();
+        document.body.classList.add('loading');
+        try {
+            const response = await fetch(url, {
+                headers: { Accept: 'text/html' },
+                cache: 'no-store',
+                signal: tasksFetchController.signal,
+            });
+            if (!response.ok) throw new Error('Ошибка при получении задач');
+            const html = await response.text();
+            tasksContainer.innerHTML = html;
+            syncPaginationState();
+            // Обновить состояние панели выбора при каждой перерисовке
+            updateSelectedCount();
+        } catch (error) {
+            if (error && error.name === 'AbortError') return; // ожидаемо при отмене
+            console.error(error);
+            showToast('Не удалось загрузить список задач', 'error');
+        } finally {
+            document.body.classList.remove('loading');
+        }
+    };
+
+    // ---------- Filters/Sort/Search ----------
+    filterButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            state.currentFilter = button.getAttribute('data-filter') || 'all';
+            filterButtons.forEach((btn) => btn.classList.remove('active'));
+            button.classList.add('active');
+            state.currentPage = 1;
+            syncUrl();
             fetchTasksAndUpdate();
-        }, 300);
+        });
     });
 
-    // Универсальный обработчик AJAX-отправки форм (mark done/delete/edit)
-    function setupAjaxForm(selector, options = {}) {
-        const mergedOptions = {
-            successType: 'success',
-            errorType: 'error',
-            ...options
-        };
-        document.querySelectorAll(selector).forEach(form => {
-            form.addEventListener('submit', e => {
-                e.preventDefault();
-                if (mergedOptions.confirm && !confirm(mergedOptions.confirm)) {
-                    return;
-                }
-                const formData = new FormData(form);
-                fetch(form.action, {
-                    method: 'POST',
-                    body: formData,
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                })
-                    .then(async response => {
-                        const contentType = response.headers.get('Content-Type') || '';
-                        if (response.ok && contentType.includes('application/json')) {
-                            const data = await response.json();
-                            showToast((data && data.message) || mergedOptions.successMessage || 'Операция выполнена', mergedOptions.successType);
-                            return fetchTasksAndUpdate();
-                        }
-                        if (!response.ok && contentType.includes('application/json')) {
-                            const data = await response.json();
-                            showToast(data.message || (mergedOptions.errorMessage || 'Ошибка при отправке формы'), mergedOptions.errorType);
-                            return;
-                        }
-                        // Fallback
-                        if (response.ok) {
-                            showToast(mergedOptions.successMessage || 'Операция выполнена', mergedOptions.successType);
-                            return fetchTasksAndUpdate();
-                        } else {
-                            showToast(mergedOptions.errorMessage || 'Ошибка при отправке формы', mergedOptions.errorType);
-                        }
-                    })
-                    .catch(err => console.error(err));
-            });
+    if (sortSelect) {
+        sortSelect.addEventListener('change', () => {
+            state.currentSort = sortSelect.value || 'asc';
+            state.currentPage = 1;
+            syncUrl();
+            fetchTasksAndUpdate();
         });
     }
 
-    function attachTaskActions() {
-        // Массовое удаление и выбор — подключаем только если есть панель
-        const bulkForm = document.querySelector('form.bulk-delete-form');
-        if (bulkForm) {
-            setupAjaxForm('form.bulk-delete-form', {
-                confirm: 'Удалить выбранные задачи?',
-                successMessage: 'Задачи удалены',
-                successType: 'warning',
-                errorMessage: 'Не удалось удалить выбранные задачи'
-            });
+    if (searchInput) {
+        const onSearch = debounce(() => {
+            state.currentPage = 1;
+            syncUrl();
+            fetchTasksAndUpdate();
+        }, 300);
+        searchInput.addEventListener('input', onSearch);
+    }
 
-            const taskCheckboxes = Array.from(document.querySelectorAll('.task-select'));
-            const selectAllTop = document.getElementById('select-all-top');
-            const countTop = document.getElementById('selected-count-top');
-            const bulkDeleteBtn = bulkForm.querySelector('button.delete-button');
-
-            function updateSelectedCount() {
-                const selected = taskCheckboxes.filter(cb => cb.checked).map(cb => cb.getAttribute('data-id'));
-                if (countTop) countTop.textContent = selected.length ? `Выбрано: ${selected.length}` : '';
-                const topIds = document.getElementById('bulk-ids-top');
-                if (topIds) topIds.value = selected.join(',');
-                if (bulkDeleteBtn) bulkDeleteBtn.disabled = selected.length === 0;
-            }
-
-            function setAll(checked) {
-                taskCheckboxes.forEach(cb => cb.checked = checked);
-                updateSelectedCount();
-            }
-
-            taskCheckboxes.forEach(cb => cb.addEventListener('change', updateSelectedCount));
-            if (selectAllTop) selectAllTop.addEventListener('change', () => setAll(selectAllTop.checked));
-            updateSelectedCount();
-        }
-
-        setupAjaxForm('form.mark-done-form', {
+    // ---------- Delegated forms handling ----------
+    const formConfigs = [
+        {
+            selector: 'form.bulk-delete-form',
+            confirm: 'Удалить выбранные задачи?',
+            successMessage: 'Задачи удалены',
+            successType: 'warning',
+            errorMessage: 'Не удалось удалить выбранные задачи',
+            errorType: 'error',
+        },
+        {
+            selector: 'form.mark-done-form',
             successMessage: 'Задача отмечена выполненной',
-            successType: 'success',  // зелёный
+            successType: 'success',
             errorMessage: 'Ошибка при отметке выполнения',
-            errorType: 'error'       // красный
-        });
-        setupAjaxForm('form.delete-form', {
+            errorType: 'error',
+        },
+        {
+            selector: 'form.delete-form',
             confirm: 'Вы точно хотите удалить?',
             successMessage: 'Задача удалена',
-            successType: 'warning',  // жёлтый
+            successType: 'warning',
             errorMessage: 'Ошибка при удалении задачи',
-            errorType: 'error'
-        });
-        setupAjaxForm('form.edit-task-form', {
+            errorType: 'error',
+        },
+        {
+            selector: 'form.edit-task-form',
             successMessage: 'Задача обновлена',
-            successType: 'info',     // синий
+            successType: 'info',
             errorMessage: 'Ошибка при редактировании задачи',
-            errorType: 'error'
-        });
+            errorType: 'error',
+        },
+    ];
 
-        // Показ формы редактирования для выбранной задачи
-        document.querySelectorAll('button.edit-button').forEach(button => {
-            button.addEventListener('click', () => {
-                const id = button.getAttribute('data-id');
-                const viewDiv = document.getElementById(`view-${id}`);
-                const editForm = document.getElementById(`edit-${id}`);
-                if (viewDiv && editForm) {
-                    viewDiv.style.display = 'none';
-                    editForm.style.display = 'block';
-                    const inputEl = document.getElementById(`title-input-${id}`);
-                    if (inputEl) {
-                        inputEl.focus();
-                        inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
-                    }
-                }
-            });
-        });
+    const getFormConfig = (form) => formConfigs.find((cfg) => form.matches(cfg.selector));
 
-        // Отмена редактирования и возврат к виду задачи
-        document.querySelectorAll('button.cancel-button').forEach(button => {
-            button.addEventListener('click', () => {
-                const id = button.getAttribute('data-id');
-                const viewDiv = document.getElementById(`view-${id}`);
-                const editForm = document.getElementById(`edit-${id}`);
-                if (viewDiv && editForm) {
-                    editForm.style.display = 'none';
-                    viewDiv.style.display = 'flex';
-                }
+    document.addEventListener('submit', async (e) => {
+        const form = e.target;
+        if (!(form instanceof HTMLFormElement)) return;
+        const cfg = getFormConfig(form);
+        if (!cfg) return;
+        e.preventDefault();
+        if (cfg.confirm && !confirm(cfg.confirm)) return;
+
+        const disableForm = () => {
+            form.setAttribute('aria-busy', 'true');
+            form.querySelectorAll('button').forEach((btn) => {
+                btn.disabled = true;
             });
-        });
+        };
+        const enableForm = () => {
+            form.removeAttribute('aria-busy');
+            form.querySelectorAll('button').forEach((btn) => {
+                btn.disabled = false;
+            });
+        };
+
+        disableForm();
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            const contentType = response.headers.get('Content-Type') || '';
+            if (contentType.includes('application/json')) {
+                const data = await response.json();
+                if (response.ok) {
+                    showToast((data && data.message) || cfg.successMessage || 'Операция выполнена', cfg.successType || 'success');
+                    await fetchTasksAndUpdate();
+                } else {
+                    showToast(data.message || cfg.errorMessage || 'Ошибка при отправке формы', cfg.errorType || 'error');
+                }
+            } else if (response.ok) {
+                showToast(cfg.successMessage || 'Операция выполнена', cfg.successType || 'success');
+                await fetchTasksAndUpdate();
+            } else {
+                showToast(cfg.errorMessage || 'Ошибка при отправке формы', cfg.errorType || 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('Ошибка сети. Попробуйте ещё раз.', 'error');
+        } finally {
+            enableForm();
+        }
+    });
+
+    // ---------- Edit/Cancellation toggles (delegated) ----------
+    document.addEventListener('click', (e) => {
+        const editBtn = e.target.closest && e.target.closest('button.edit-button');
+        if (editBtn) {
+            const id = editBtn.getAttribute('data-id');
+            const viewDiv = document.getElementById(`view-${id}`);
+            const editForm = document.getElementById(`edit-${id}`);
+            if (viewDiv && editForm) {
+                viewDiv.style.display = 'none';
+                editForm.style.display = 'block';
+                const inputEl = document.getElementById(`title-input-${id}`);
+                if (inputEl) {
+                    // Сохранить исходное значение, чтобы можно было восстановить при отмене
+                    inputEl.dataset.originalValue = inputEl.value;
+                    inputEl.focus();
+                    const len = inputEl.value.length;
+                    inputEl.setSelectionRange(len, len);
+                }
+            }
+            return;
+        }
+
+        const cancelBtn = e.target.closest && e.target.closest('button.cancel-button');
+        if (cancelBtn) {
+            const id = cancelBtn.getAttribute('data-id');
+            const viewDiv = document.getElementById(`view-${id}`);
+            const editForm = document.getElementById(`edit-${id}`);
+            if (viewDiv && editForm) {
+                const inputEl = document.getElementById(`title-input-${id}`);
+                if (inputEl && inputEl.dataset.originalValue !== undefined) {
+                    inputEl.value = inputEl.dataset.originalValue;
+                }
+                editForm.style.display = 'none';
+                viewDiv.style.display = 'flex';
+            }
+            return;
+        }
+
+        // Pagination controls
+        const prevBtn = e.target.closest && e.target.closest('.pagination .page-prev');
+        const nextBtn = e.target.closest && e.target.closest('.pagination .page-next');
+        if (prevBtn || nextBtn) {
+            const pag = document.querySelector('.pagination');
+            const totalPages = Math.max(1, Number(pag && pag.getAttribute('data-total-pages')) || 1);
+            const setPage = (page) => {
+                state.currentPage = Math.max(1, Math.min(totalPages, page));
+                syncUrl();
+                fetchTasksAndUpdate();
+            };
+            if (prevBtn) setPage(state.currentPage - 1);
+            if (nextBtn) setPage(state.currentPage + 1);
+        }
+    });
+
+    // ---------- Bulk selection (delegated) ----------
+    function updateSelectedCount() {
+        const bulkForm = document.querySelector('form.bulk-delete-form');
+        if (!bulkForm) return;
+        const taskCheckboxes = Array.from(document.querySelectorAll('.task-select'));
+        const selectedIds = taskCheckboxes.filter((cb) => cb.checked).map((cb) => cb.getAttribute('data-id'));
+        const countTop = document.getElementById('selected-count-top');
+        if (countTop) countTop.textContent = selectedIds.length ? `Выбрано: ${selectedIds.length}` : '';
+        const topIds = document.getElementById('bulk-ids-top');
+        if (topIds) topIds.value = selectedIds.join(',');
+        const bulkDeleteBtn = bulkForm.querySelector('button.delete-button');
+        if (bulkDeleteBtn) bulkDeleteBtn.disabled = selectedIds.length === 0;
+        const selectAllCb = document.getElementById('select-all-top');
+        if (selectAllCb) selectAllCb.checked = taskCheckboxes.length > 0 && selectedIds.length === taskCheckboxes.length;
     }
 
-    // Привязка к уже загруженному списку и первичная загрузка (подстраховка)
-    attachTaskActions();
-    fetchTasksAndUpdate();
+    document.addEventListener('change', (e) => {
+        const target = e.target;
+        if (!(target instanceof HTMLElement)) return;
+        if (target.matches && target.matches('.task-select')) {
+            updateSelectedCount();
+            return;
+        }
+        if (target.id === 'select-all-top' && 'checked' in target) {
+            const checked = target.checked;
+            document.querySelectorAll('.task-select').forEach((cb) => {
+                cb.checked = checked;
+            });
+            updateSelectedCount();
+        }
+    });
 
-    // AJAX-добавление новой задачи
+    // ---------- Add new task (async/await) ----------
     const addTaskForm = document.getElementById('add-task-form');
     if (addTaskForm) {
-        addTaskForm.addEventListener('submit', function (e) {
+        addTaskForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const formData = new FormData(addTaskForm);
-            fetch(addTaskForm.action || window.location.href, {
-                method: 'POST',
-                body: formData,
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            })
-                .then(async response => {
-                    const contentType = response.headers.get('Content-Type') || '';
-                    if (response.ok && contentType.includes('application/json')) {
-                        const data = await response.json();
-                        addTaskForm.reset();
-                        showToast((data && data.message) || 'Задача добавлена', 'success');
-                        fetchTasksAndUpdate();
-                        return;
-                    }
-                    if (!response.ok && contentType.includes('application/json')) {
-                        const data = await response.json();
-                        showToast(data.message || 'Не удалось добавить задачу. Проверьте данные.', 'error');
-                        return;
-                    }
-                    // Fallback
+            const submitBtn = addTaskForm.querySelector('button[type="submit"]');
+            const disable = () => {
+                addTaskForm.setAttribute('aria-busy', 'true');
+                if (submitBtn) submitBtn.disabled = true;
+            };
+            const enable = () => {
+                addTaskForm.removeAttribute('aria-busy');
+                if (submitBtn) submitBtn.disabled = false;
+            };
+            disable();
+            try {
+                const response = await fetch(addTaskForm.action || window.location.href, {
+                    method: 'POST',
+                    body: new FormData(addTaskForm),
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const contentType = response.headers.get('Content-Type') || '';
+                if (contentType.includes('application/json')) {
+                    const data = await response.json();
                     if (response.ok) {
                         addTaskForm.reset();
-                        showToast('Задача добавлена', 'success');
-                        fetchTasksAndUpdate();
+                        showToast((data && data.message) || 'Задача добавлена', 'success');
+                        await fetchTasksAndUpdate();
                     } else {
-                        showToast('Не удалось добавить задачу. Проверьте данные.', 'error');
+                        showToast(data.message || 'Не удалось добавить задачу. Проверьте данные.', 'error');
                     }
-                })
-                .catch(err => console.error('Ошибка при добавлении задачи:', err));
+                } else if (response.ok) {
+                    addTaskForm.reset();
+                    showToast('Задача добавлена', 'success');
+                    await fetchTasksAndUpdate();
+                } else {
+                    showToast('Не удалось добавить задачу. Проверьте данные.', 'error');
+                }
+            } catch (err) {
+                console.error('Ошибка при добавлении задачи:', err);
+                showToast('Ошибка сети. Попробуйте ещё раз.', 'error');
+            } finally {
+                enable();
+            }
         });
     }
 
-    function attachPagination() {
-        const container = document.querySelector('.pagination');
-        if (!container) return;
-        const totalPages = Math.max(1, Number(container.getAttribute('data-total-pages')) || 1);
-        const prevBtn = container.querySelector('.page-prev');
-        const nextBtn = container.querySelector('.page-next');
-        const setPage = (page) => {
-            currentPage = Math.max(1, Math.min(totalPages, page));
-            fetchTasksAndUpdate();
-        };
-        if (prevBtn) {
-            prevBtn.addEventListener('click', () => setPage(currentPage - 1));
-        }
-        if (nextBtn) {
-            nextBtn.addEventListener('click', () => setPage(currentPage + 1));
-        }
-    }
+    // ---------- Initial load ----------
+    updateSelectedCount();
+    fetchTasksAndUpdate();
 });
 

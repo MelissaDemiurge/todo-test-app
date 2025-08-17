@@ -49,12 +49,7 @@ def index():
             if is_ajax:
                 return jsonify({
                     "success": True,
-                    "message": "Задача добавлена",
-                    "patch": {
-                        "id": new_task.id,
-                        "title": new_task.title,
-                        "done": new_task.done
-                    }
+                    "message": "Задача добавлена"
                 }), 200
             return redirect(url_for('tasks.index'))
     else:
@@ -90,11 +85,7 @@ def mark_done(form):
     if is_ajax:
         return jsonify({
             "success": True,
-            "message": f'Задача "{task.title}" отмечена выполненной',
-            "patch": {
-                "id": task.id,
-                "done": task.done
-            }
+            "message": f'Задача "{task.title}" отмечена выполненной'
         }), 200
     return redirect(url_for('tasks.index'))
 
@@ -116,11 +107,7 @@ def delete_task(form):
     if is_ajax:
         return jsonify({
             "success": True,
-            "message": f'Задача "{title_for_msg}" удалена',
-            "patch": {
-                "id": task.id,
-                "deleted": True
-            }
+            "message": f'Задача "{title_for_msg}" удалена'
         }), 200
     return redirect(url_for('tasks.index'))
 
@@ -148,12 +135,7 @@ def edit_task(form):
         if is_ajax:
             return jsonify({
                 "success": True,
-                "message": f'Задача "{task.title}" обновлена',
-                "patch": {
-                    "id": task.id,
-                    "title": task.title,
-                    "done": task.done
-                }
+                "message": f'Задача "{task.title}" обновлена'
             }), 200
         return redirect(url_for('tasks.index'))
 
@@ -213,13 +195,11 @@ def bulk_delete(form):
         return jsonify({"success": False, "message": "Не выбрано ни одной задачи"}), 400
 
     # 2) удалить все за один запрос (SQLAlchemy 2.0 style)
-    stmt = delete(Task).where(Task.id.in_(ids))
-    result = db.session.execute(stmt)   # result.rowcount может быть None на некоторых БД
+    db.session.execute(delete(Task).where(Task.id.in_(ids)))
     db.session.commit()
 
     # 3) ответ
     return jsonify({
         "success": True,
-        "message": f"Удалено задач: {len(ids)}",
-        "patch": {"deleted_ids": ids}
+        "message": f"Удалено задач: {len(ids)}"
     }), 200
