@@ -326,3 +326,35 @@ form > input[type="text"] {
     border: 1px solid #ced4da;
     border-radius: 4px;
 }
+
+/* Состояние загрузки: затемнение страницы и спиннер по центру */
+body.loading {
+	cursor: progress;
+}
+body.loading::before {
+	content: '';
+	position: fixed;
+	inset: 0;
+	background: rgba(255, 255, 255, 0.45);
+	backdrop-filter: blur(1px);
+	z-index: 900; /* ниже тостов (1000), но выше контента */
+	pointer-events: all; /* блокируем клики по странице */
+}
+body.loading::after {
+	content: '';
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	width: 36px;
+	height: 36px;
+	margin-top: -18px;
+	margin-left: -18px;
+	border: 3px solid rgba(0, 0, 0, 0.2);
+	border-top-color: #007bff;
+	border-radius: 50%;
+	animation: spinner-rotate 0.8s linear infinite;
+	z-index: 950; /* ниже тостов */
+}
+@keyframes spinner-rotate {
+	to { transform: rotate(360deg); }
+}

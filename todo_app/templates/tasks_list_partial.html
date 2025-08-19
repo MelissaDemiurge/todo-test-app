@@ -22,7 +22,7 @@
             <span id="title-{{ task.id }}" class="task-title {% if task.done %}task-done{% else %}task-undone{% endif %}">{{ task.title }}</span>
             <span id="status-{{ task.id }}" class="task-status">{% if task.done %}выполнена{% else %}не выполнена{% endif %}</span>
             <div class="controls">
-                <button type="submit" class="edit-button" data-id="{{ task.id }}">Редактировать</button>
+                <button type="button" class="edit-button" data-id="{{ task.id }}">Редактировать</button>
                 {% if not task.done %}
                 <form action="{{ url_for('tasks.mark_done') }}" method="post" class="inline-form mark-done-form">
                     {{ mark_form.csrf_token(id='csrf-mark-' ~ task.id) }}

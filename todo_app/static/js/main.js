@@ -48,27 +48,27 @@ document.addEventListener('DOMContentLoaded', () => {
         perPage: 15,
     };
 
-    const buildTasksUrl = () => {
+    const getSearchQuery = () => ((searchInput && searchInput.value) || '').trim();
+
+    const buildSearchParams = () => {
         const params = new URLSearchParams({
             filter: state.currentFilter,
             sort: state.currentSort,
             page: String(state.currentPage),
             per_page: String(state.perPage),
         });
-        const q = (searchInput && searchInput.value || '').trim();
+        const q = getSearchQuery();
         if (q) params.set('q', q);
+        return params;
+    };
+
+    const buildTasksUrl = () => {
+        const params = buildSearchParams();
         return `/tasks_data?${params.toString()}`;
     };
     // ----------- URL sync helpers -----------
     function syncUrl() {
-        const params = new URLSearchParams({
-            filter: state.currentFilter,
-            sort: state.currentSort,
-            page: String(state.currentPage),
-            per_page: String(state.perPage),
-        });
-        const qVal = (searchInput && searchInput.value || '').trim();
-        if (qVal) params.set('q', qVal);
+        const params = buildSearchParams();
         const newUrl = `${window.location.pathname}?${params.toString()}`;
         history.pushState(null, '', newUrl);
     }
@@ -112,6 +112,54 @@ document.addEventListener('DOMContentLoaded', () => {
     // Allow cancelling outdated list fetches (e.g., fast typing)
     let tasksFetchController = null;
 
+    // ---------- Network/Form helpers ----------
+    function setFormBusy(form, busy, buttonSelector = 'button') {
+        if (busy) {
+            form.setAttribute('aria-busy', 'true');
+            form.querySelectorAll(buttonSelector).forEach((btn) => {
+                btn.disabled = true;
+            });
+        } else {
+            form.removeAttribute('aria-busy');
+            form.querySelectorAll(buttonSelector).forEach((btn) => {
+                btn.disabled = false;
+            });
+        }
+    }
+
+    async function handleResponseToast(response, {
+        successMessage,
+        successType = 'success',
+        errorMessage,
+        errorType = 'error',
+    } = {}) {
+        const contentType = response.headers.get('Content-Type') || '';
+        if (contentType.includes('application/json')) {
+            const data = await response.json();
+            if (response.ok) {
+                showToast((data && data.message) || successMessage || 'Операция выполнена', successType);
+                return { ok: true, data };
+            }
+            showToast((data && data.message) || errorMessage || 'Ошибка при отправке формы', errorType);
+            return { ok: false, data };
+        }
+        if (response.ok) {
+            showToast(successMessage || 'Операция выполнена', successType);
+            return { ok: true };
+        }
+        showToast(errorMessage || 'Ошибка при отправке формы', errorType);
+        return { ok: false };
+    }
+
+    async function postFormWithToast(form, toastCfg = {}, actionOverride) {
+        const response = await fetch(actionOverride || form.action || window.location.href, {
+            method: 'POST',
+            body: new FormData(form),
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
+        return handleResponseToast(response, toastCfg);
+    }
+
     const syncPaginationState = () => {
         const pag = document.querySelector('.pagination');
         if (!pag) {
@@ -150,15 +198,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    function navigateAndReload() {
+        syncUrl();
+        fetchTasksAndUpdate();
+    }
+
     // ---------- Filters/Sort/Search ----------
     filterButtons.forEach((button) => {
         button.addEventListener('click', () => {
             state.currentFilter = button.getAttribute('data-filter') || 'all';
-            filterButtons.forEach((btn) => btn.classList.remove('active'));
-            button.classList.add('active');
             state.currentPage = 1;
-            syncUrl();
-            fetchTasksAndUpdate();
+            reflectStateToUI();
+            navigateAndReload();
         });
     });
 
@@ -166,16 +217,14 @@ document.addEventListener('DOMContentLoaded', () => {
         sortSelect.addEventListener('change', () => {
             state.currentSort = sortSelect.value || 'asc';
             state.currentPage = 1;
-            syncUrl();
-            fetchTasksAndUpdate();
+            navigateAndReload();
         });
     }
 
     if (searchInput) {
         const onSearch = debounce(() => {
             state.currentPage = 1;
-            syncUrl();
-            fetchTasksAndUpdate();
+            navigateAndReload();
         }, 300);
         searchInput.addEventListener('input', onSearch);
     }
@@ -224,46 +273,22 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         if (cfg.confirm && !confirm(cfg.confirm)) return;
 
-        const disableForm = () => {
-            form.setAttribute('aria-busy', 'true');
-            form.querySelectorAll('button').forEach((btn) => {
-                btn.disabled = true;
-            });
-        };
-        const enableForm = () => {
-            form.removeAttribute('aria-busy');
-            form.querySelectorAll('button').forEach((btn) => {
-                btn.disabled = false;
-            });
-        };
-
-        disableForm();
+        setFormBusy(form, true);
         try {
-            const response = await fetch(form.action, {
-                method: 'POST',
-                body: new FormData(form),
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            const result = await postFormWithToast(form, {
+                successMessage: cfg.successMessage,
+                successType: cfg.successType,
+                errorMessage: cfg.errorMessage,
+                errorType: cfg.errorType,
             });
-            const contentType = response.headers.get('Content-Type') || '';
-            if (contentType.includes('application/json')) {
-                const data = await response.json();
-                if (response.ok) {
-                    showToast((data && data.message) || cfg.successMessage || 'Операция выполнена', cfg.successType || 'success');
-                    await fetchTasksAndUpdate();
-                } else {
-                    showToast(data.message || cfg.errorMessage || 'Ошибка при отправке формы', cfg.errorType || 'error');
-                }
-            } else if (response.ok) {
-                showToast(cfg.successMessage || 'Операция выполнена', cfg.successType || 'success');
+            if (result && result.ok) {
                 await fetchTasksAndUpdate();
-            } else {
-                showToast(cfg.errorMessage || 'Ошибка при отправке формы', cfg.errorType || 'error');
             }
         } catch (err) {
             console.error(err);
             showToast('Ошибка сети. Попробуйте ещё раз.', 'error');
         } finally {
-            enableForm();
+            setFormBusy(form, false);
         }
     });
 
@@ -313,8 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const totalPages = Math.max(1, Number(pag && pag.getAttribute('data-total-pages')) || 1);
             const setPage = (page) => {
                 state.currentPage = Math.max(1, Math.min(totalPages, page));
-                syncUrl();
-                fetchTasksAndUpdate();
+                navigateAndReload();
             };
             if (prevBtn) setPage(state.currentPage - 1);
             if (nextBtn) setPage(state.currentPage + 1);
@@ -358,44 +382,23 @@ document.addEventListener('DOMContentLoaded', () => {
     if (addTaskForm) {
         addTaskForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const submitBtn = addTaskForm.querySelector('button[type="submit"]');
-            const disable = () => {
-                addTaskForm.setAttribute('aria-busy', 'true');
-                if (submitBtn) submitBtn.disabled = true;
-            };
-            const enable = () => {
-                addTaskForm.removeAttribute('aria-busy');
-                if (submitBtn) submitBtn.disabled = false;
-            };
-            disable();
+            setFormBusy(addTaskForm, true, 'button[type="submit"]');
             try {
-                const response = await fetch(addTaskForm.action || window.location.href, {
-                    method: 'POST',
-                    body: new FormData(addTaskForm),
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                });
-                const contentType = response.headers.get('Content-Type') || '';
-                if (contentType.includes('application/json')) {
-                    const data = await response.json();
-                    if (response.ok) {
-                        addTaskForm.reset();
-                        showToast((data && data.message) || 'Задача добавлена', 'success');
-                        await fetchTasksAndUpdate();
-                    } else {
-                        showToast(data.message || 'Не удалось добавить задачу. Проверьте данные.', 'error');
-                    }
-                } else if (response.ok) {
+                const result = await postFormWithToast(addTaskForm, {
+                    successMessage: 'Задача добавлена',
+                    successType: 'success',
+                    errorMessage: 'Не удалось добавить задачу. Проверьте данные.',
+                    errorType: 'error',
+                }, addTaskForm.action || window.location.href);
+                if (result && result.ok) {
                     addTaskForm.reset();
-                    showToast('Задача добавлена', 'success');
                     await fetchTasksAndUpdate();
-                } else {
-                    showToast('Не удалось добавить задачу. Проверьте данные.', 'error');
                 }
             } catch (err) {
                 console.error('Ошибка при добавлении задачи:', err);
                 showToast('Ошибка сети. Попробуйте ещё раз.', 'error');
             } finally {
-                enable();
+                setFormBusy(addTaskForm, false, 'button[type="submit"]');
             }
         });
     }

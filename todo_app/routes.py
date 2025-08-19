@@ -5,6 +5,7 @@ from todo_app.models import db, Task
 from todo_app.services import get_tasks
 from todo_app.utils import ajax_required
 from sqlalchemy import delete
+from todo_app.utils import is_ajax, ok, bad_request, first_error
 
 tasks_bp = Blueprint('tasks', __name__)
 
@@ -19,7 +20,7 @@ def get_task_by_id(id_str):
 @tasks_bp.route('/', methods=['GET', 'POST'])
 def index():
     """Главная: список задач и добавление.
-    AJAX: 204 на успех, 400 с HTML-ошибкой при невалидных данных.
+    AJAX: 200 JSON при успехе (message), 400 JSON с сообщением при ошибке.
     """
     task_form = TaskForm()
     mark_form = MarkDoneForm()
@@ -31,7 +32,7 @@ def index():
     page, per_page = 1, 15
     items, total = get_tasks(page=page, per_page=per_page)
 
-    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    is_ajax_req = is_ajax()
 
     if task_form.validate_on_submit():
         title = task_form.title.data
@@ -42,20 +43,16 @@ def index():
         except IntegrityError:
             db.session.rollback()
             msg = f'Задача "{title}" уже существует'
-            if is_ajax:
-                return jsonify({"success": False, "message": msg}), 400
+            if is_ajax_req:
+                return bad_request(msg)
             task_form.title.errors.append(msg)
         else:
-            if is_ajax:
-                return jsonify({
-                    "success": True,
-                    "message": "Задача добавлена"
-                }), 200
+            if is_ajax_req:
+                return ok("Задача добавлена")
             return redirect(url_for('tasks.index'))
     else:
-        if request.method == 'POST' and is_ajax:
-            error_msg = task_form.title.errors[0] if task_form.title.errors else next(iter(next(iter(task_form.errors.values()), ["Некорректные данные формы"]) ), "Некорректные данные формы")
-            return jsonify({"success": False, "message": error_msg}), 400
+        if request.method == 'POST' and is_ajax_req:
+            return bad_request(first_error(task_form))
 
     return render_template('index.html',
                            tasks=items,
@@ -74,20 +71,12 @@ def index():
 def mark_done(form):
     """Отметить задачу как выполненную (поддерживает AJAX)."""
     task = get_task_by_id(form.task_id.data)
-    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     if not task:
-        if is_ajax:
-            return jsonify({"success": False, "message": "Задача не найдена"}), 400
-        return redirect(url_for('tasks.index'))
+        return bad_request("Задача не найдена")
 
     task.done = True
     db.session.commit()
-    if is_ajax:
-        return jsonify({
-            "success": True,
-            "message": f'Задача "{task.title}" отмечена выполненной'
-        }), 200
-    return redirect(url_for('tasks.index'))
+    return ok(f'Задача "{task.title}" отмечена выполненной')
 
 
 @tasks_bp.route('/delete', methods=['POST'])
@@ -97,19 +86,12 @@ def delete_task(form):
     task = get_task_by_id(form.task_id.data)
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     if not task:
-        if is_ajax:
-            return jsonify({"success": False, "message": "Задача не найдена"}), 400
-        return redirect(url_for('tasks.index'))
+        return bad_request("Задача не найдена")
 
     title_for_msg = task.title
     db.session.delete(task)
     db.session.commit()
-    if is_ajax:
-        return jsonify({
-            "success": True,
-            "message": f'Задача "{title_for_msg}" удалена'
-        }), 200
-    return redirect(url_for('tasks.index'))
+    return ok(f'Задача "{title_for_msg}" удалена')
 
 
 @tasks_bp.route('/edit', methods=['POST'])
@@ -119,9 +101,7 @@ def edit_task(form):
     task = get_task_by_id(form.task_id.data)
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     if not task:
-        if is_ajax:
-            return jsonify({"success": False, "message": "Задача не найдена"}), 400
-        return redirect(url_for('tasks.index'))
+        return bad_request("Задача не найдена")
 
     new_title = form.title.data
     task.title = new_title
@@ -132,12 +112,7 @@ def edit_task(form):
         db.session.rollback()
         form.title.errors.append(f'Название "{new_title}" уже используется другой задачей')
     else:
-        if is_ajax:
-            return jsonify({
-                "success": True,
-                "message": f'Задача "{task.title}" обновлена'
-            }), 200
-        return redirect(url_for('tasks.index'))
+        return ok(f'Задача "{task.title}" обновлена')
 
 
 @tasks_bp.route('/tasks_data', methods=['GET'])
