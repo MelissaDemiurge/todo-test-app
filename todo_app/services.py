@@ -15,15 +15,15 @@ def get_tasks(
     - sort_order: 'asc' | 'desc' по полю date_created
     - page, per_page: пагинация. Если заданы, возвращает кортеж (items, total)
     """
-    stmt = select(Task)
-
+    conditions = []
     if filter_val == 'done':
-        stmt = stmt.where(Task.done.is_(True))
+        conditions.append(Task.done.is_(True))
     elif filter_val == 'undone':
-        stmt = stmt.where(Task.done.is_(False))
-
+        conditions.append(Task.done.is_(False))
     if search_term:
-        stmt = stmt.where(Task.title.ilike(f'%{search_term}%'))
+        conditions.append(Task.title.ilike(f'%{search_term}%'))
+
+    stmt = select(Task).where(*conditions)
 
     if sort_order == 'asc':
         stmt = stmt.order_by(Task.date_created.asc())
@@ -31,16 +31,9 @@ def get_tasks(
         stmt = stmt.order_by(Task.date_created.desc())
 
     # Пагинация
-    if page and per_page:
+    if page is not None and per_page is not None:
         # Подсчёт общего количества (без order_by)
-        count_stmt = select(func.count()).select_from(Task)
-        # Применяем те же where-фильтры
-        if filter_val == 'done':
-            count_stmt = count_stmt.where(Task.done.is_(True))
-        elif filter_val == 'undone':
-            count_stmt = count_stmt.where(Task.done.is_(False))
-        if search_term:
-            count_stmt = count_stmt.where(Task.title.ilike(f'%{search_term}%'))
+        count_stmt = select(func.count()).select_from(Task).where(*conditions)
 
         total = db.session.execute(count_stmt).scalar_one()
 

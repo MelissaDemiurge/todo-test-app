@@ -37,17 +37,13 @@ def ajax_required(FormClass):
         @wraps(view_func)
         def wrapped_view(*args, **kwargs):
             form = FormClass()
-            is_ajax_req = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            is_ajax_req = is_ajax()
 
             # Если форма невалидна до вызова обработчика
             if not form.validate_on_submit():
                 if is_ajax_req:
-                    error_messages = []
-                    for field_name, field_errors in form.errors.items():
-                        for error in field_errors:
-                            error_messages.append(error)
-                    error_text = error_messages[0] if error_messages else 'Некорректные данные формы'
-                    return jsonify({"success": False, "message": error_text}), 400
+                    error_text = first_error(form, 'Некорректные данные формы')
+                    return bad_request(error_text)
                 # Для обычных POST — редирект на список
                 return redirect(url_for('tasks.index'))
 
@@ -63,12 +59,8 @@ def ajax_required(FormClass):
             # Если обработчик добавил ошибки вручную (например, дубликаты)
             if getattr(form, 'errors', None):
                 if is_ajax_req:
-                    error_messages = []
-                    for field_name, field_errors in form.errors.items():
-                        for error in field_errors:
-                            error_messages.append(error)
-                    error_text = error_messages[0] if error_messages else 'Ошибка обработки формы'
-                    return jsonify({"success": False, "message": error_text}), 400
+                    error_text = first_error(form, 'Ошибка обработки формы')
+                    return bad_request(error_text)
                 return redirect(url_for('tasks.index'))
 
             # Успешный AJAX — JSON по умолчанию, если обработчик сам ничего не вернул

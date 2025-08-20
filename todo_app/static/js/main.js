@@ -20,8 +20,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showToast(message, type = 'info', timeoutMs = 3000) {
         const toastRoot = ensureToastRoot();
+        const MAX_TOASTS = 3;
+        while (toastRoot.children.length >= MAX_TOASTS) {
+            toastRoot.firstChild.remove();
+        }
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
+        toast.setAttribute('role', 'alert');
         toast.textContent = message;
         toastRoot.appendChild(toast);
         setTimeout(() => {
@@ -46,6 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentSort: 'asc',
         currentPage: 1,
         perPage: 15,
+        totalPages: 1,
     };
 
     const getSearchQuery = () => ((searchInput && searchInput.value) || '').trim();
@@ -135,7 +141,12 @@ document.addEventListener('DOMContentLoaded', () => {
     } = {}) {
         const contentType = response.headers.get('Content-Type') || '';
         if (contentType.includes('application/json')) {
-            const data = await response.json();
+            let data = null;
+            try {
+                data = await response.json();
+            } catch (_) {
+                
+            }
             if (response.ok) {
                 showToast((data && data.message) || successMessage || 'Операция выполнена', successType);
                 return { ok: true, data };
@@ -164,10 +175,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const pag = document.querySelector('.pagination');
         if (!pag) {
             state.currentPage = 1;
+            state.totalPages = 1;
             return;
         }
         const serverPage = Number(pag.getAttribute('data-page')) || 1;
         state.currentPage = Math.max(1, serverPage);
+        const totalPages = Number(pag.getAttribute('data-total-pages')) || 1;
+        state.totalPages = Math.max(1, totalPages);
     };
 
     const fetchTasksAndUpdate = async () => {
@@ -334,8 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const prevBtn = e.target.closest && e.target.closest('.pagination .page-prev');
         const nextBtn = e.target.closest && e.target.closest('.pagination .page-next');
         if (prevBtn || nextBtn) {
-            const pag = document.querySelector('.pagination');
-            const totalPages = Math.max(1, Number(pag && pag.getAttribute('data-total-pages')) || 1);
+            const totalPages = state.totalPages || 1;
             const setPage = (page) => {
                 state.currentPage = Math.max(1, Math.min(totalPages, page));
                 navigateAndReload();
@@ -349,7 +362,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateSelectedCount() {
         const bulkForm = document.querySelector('form.bulk-delete-form');
         if (!bulkForm) return;
-        const taskCheckboxes = Array.from(document.querySelectorAll('.task-select'));
+        const taskCheckboxes = Array.from(tasksContainer.querySelectorAll('.task-select'));
         const selectedIds = taskCheckboxes.filter((cb) => cb.checked).map((cb) => cb.getAttribute('data-id'));
         const countTop = document.getElementById('selected-count-top');
         if (countTop) countTop.textContent = selectedIds.length ? `Выбрано: ${selectedIds.length}` : '';
@@ -370,7 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (target.id === 'select-all-top' && 'checked' in target) {
             const checked = target.checked;
-            document.querySelectorAll('.task-select').forEach((cb) => {
+            tasksContainer.querySelectorAll('.task-select').forEach((cb) => {
                 cb.checked = checked;
             });
             updateSelectedCount();

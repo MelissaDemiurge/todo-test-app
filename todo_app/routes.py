@@ -1,11 +1,11 @@
-from flask import Blueprint, render_template, redirect, url_for, request, jsonify
+from flask import Blueprint, render_template, redirect, url_for, request
 from sqlalchemy.exc import IntegrityError
 from todo_app.forms import TaskForm, MarkDoneForm, DeleteForm, EditForm, BulkDeleteForm
 from todo_app.models import db, Task
 from todo_app.services import get_tasks
 from todo_app.utils import ajax_required
 from sqlalchemy import delete
-from todo_app.utils import is_ajax, ok, bad_request, first_error
+from todo_app.utils import ajax_required, is_ajax, ok, bad_request, first_error
 
 tasks_bp = Blueprint('tasks', __name__)
 
@@ -84,7 +84,6 @@ def mark_done(form):
 def delete_task(form):
     """Удалить задачу (поддерживает AJAX)."""
     task = get_task_by_id(form.task_id.data)
-    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     if not task:
         return bad_request("Задача не найдена")
 
@@ -99,7 +98,6 @@ def delete_task(form):
 def edit_task(form):
     """Редактировать заголовок/статус задачи (поддерживает AJAX)."""
     task = get_task_by_id(form.task_id.data)
-    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     if not task:
         return bad_request("Задача не найдена")
 
@@ -165,16 +163,13 @@ def bulk_delete(form):
     try:
         ids = [int(x) for x in raw.split(',') if x.strip()]
     except ValueError:
-        return jsonify({"success": False, "message": "Некорректные идентификаторы"}), 400
+        return bad_request("Некорректные идентификаторы")
     if not ids:
-        return jsonify({"success": False, "message": "Не выбрано ни одной задачи"}), 400
+        return bad_request("Не выбрано ни одной задачи")
 
     # 2) удалить все за один запрос (SQLAlchemy 2.0 style)
     db.session.execute(delete(Task).where(Task.id.in_(ids)))
     db.session.commit()
 
     # 3) ответ
-    return jsonify({
-        "success": True,
-        "message": f"Удалено задач: {len(ids)}"
-    }), 200
+    return ok(f"Удалено задач: {len(ids)}")
