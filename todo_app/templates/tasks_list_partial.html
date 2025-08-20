@@ -18,9 +18,9 @@
         <input type="checkbox" class="task-select" data-id="{{ task.id }}" aria-label="Выбрать задачу {{ task.id }}">
         <!-- Блок просмотра задачи -->
          <div id="view-{{ task.id }}" class="task-view">
-            <span class="task-index">{{ (page - 1) * per_page + loop.index }}.</span>
-            <span id="title-{{ task.id }}" class="task-title {% if task.done %}task-done{% else %}task-undone{% endif %}">{{ task.title }}</span>
-            <span id="status-{{ task.id }}" class="task-status">{% if task.done %}выполнена{% else %}не выполнена{% endif %}</span>
+            <span>{{ (page - 1) * per_page + loop.index }}.</span>
+            <span id="title-{{ task.id }}" class="{% if task.done %}task-done{% else %}task-undone{% endif %}">{{ task.title }}</span>
+            <span id="status-{{ task.id }}">{% if task.done %}выполнена{% else %}не выполнена{% endif %}</span>
             <div class="controls">
                 <button type="button" class="edit-button" data-id="{{ task.id }}">Редактировать</button>
                 {% if not task.done %}
@@ -61,6 +61,6 @@
 {% if total_pages < 1 %}{% set total_pages = 1 %}{% endif %}
 <div class="pagination" data-page="{{ page }}" data-per-page="{{ per_page }}" data-total="{{ total }}" data-total-pages="{{ total_pages }}">
   <button type="button" class="page-prev" {% if page <= 1 %}disabled{% endif %}>Предыдущая</button>
-  <span class="page-info">Страница {{ page }} из {{ total_pages }}</span>
+  <span>Страница {{ page }} из {{ total_pages }}</span>
   <button type="button" class="page-next" {% if page >= total_pages %}disabled{% endif %}>Следующая</button>
 </div>
