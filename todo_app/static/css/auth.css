@@ -1,0 +1,43 @@
+/* Переменные темы берём из theme.css, здесь не переопределяем */
+/* Светлая тема для auth использует общие переменные из theme.css */
+:root:not(.dark) .auth-card{background:#ffffff;border-color:#e1e5ea;box-shadow:0 16px 44px rgba(0,0,0,.08)}
+:root:not(.dark) body{background:#f8f9fa;color:#212529}
+:root:not(.dark) .form-row input[type="text"],
+:root:not(.dark) .form-row input[type="password"],
+:root:not(.dark) .form-row input[type="email"]{background:#fff;border:1px solid #ced4da;color:#212529}
+:root:not(.dark) .form-actions .primary{background:linear-gradient(180deg,#6ea8fe 0%, #5e96fb 100%);color:#0b1020}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:linear-gradient(180deg,#0f1115 0%,#0e1014 100%);color:var(--text);font:400 16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,"Helvetica Neue",Arial}
+
+.site-header .container{max-width:960px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
+.nav a{color:var(--primary);margin-left:14px;text-decoration:none}
+.nav .nav-user{margin-right:8px;color:var(--muted)}
+
+.auth-card{max-width:520px;margin:56px auto;padding:28px 28px 24px;border:1px solid var(--border);border-radius:14px;background:linear-gradient(180deg,#151923 0%,#141827 100%);box-shadow:0 16px 44px var(--shadow)}
+.auth-card h2{margin:0 0 18px;font-size:28px;letter-spacing:.2px}
+.form-row{display:flex;flex-direction:column;margin:12px 0}
+.form-row label{margin-bottom:6px;color:var(--muted);font-size:14px}
+.form-row input[type="text"],
+.form-row input[type="password"],
+.form-row input[type="email"]{appearance:none;width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:#0f1320;color:var(--text);outline:none;transition:box-shadow .2s,border-color .2s}
+.form-row input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(110,168,254,.15)}
+.checkbox{display:flex;align-items:center;gap:8px;color:var(--muted)}
+
+.form-actions{margin-top:14px}
+.form-actions .primary{cursor:pointer;border:1px solid transparent;background:linear-gradient(180deg,var(--primary) 0%,#5e96fb 100%);color:#0b1020;padding:10px 16px;border-radius:10px;font-weight:600;box-shadow:0 8px 24px rgba(110,168,254,.25);transition:transform .06s ease,filter .15s ease}
+.form-actions .primary:hover{filter:brightness(1.05)}
+.form-actions .primary:active{transform:translateY(1px)}
+
+.error{color:var(--danger);font-size:13px;margin-top:6px}
+
+.auth-card p{margin-top:18px;color:var(--muted)}
+.auth-card a{color:var(--primary)}
+
+/* Toasts: используем глобальные стили из theme.css */
+
+/* Лого как в header.css (дублируем здесь, чтобы гарантированно перекрыть порядок подключений) */
+.brand{font-weight:800;letter-spacing:.3px;color:var(--text);text-decoration:none;display:inline-flex;gap:4px;align-items:center}
+.brand span{color:var(--primary)}
+.brand::before{content:'';width:10px;height:10px;border-radius:2px;background:var(--primary);box-shadow:0 0 20px color-mix(in oklab, var(--primary) 60%, transparent)}
+

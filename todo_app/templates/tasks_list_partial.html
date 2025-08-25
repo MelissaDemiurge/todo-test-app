@@ -1,22 +1,23 @@
 {# Перенесено вниз под список #}
 
-<div class="tasks-header">
-  <div>Задача</div>
-  <div class="placeholder-cell">Отметить как выполненную</div>
-  <div class="placeholder-cell">Редактировать</div>
-  <div class="placeholder-cell">Удалить</div>
+<div class="tasks-table">
+  <div class="tbl-row tbl-head">
+    <div>Задача</div>
+    <div class="placeholder-cell">Отметить как выполненную</div>
+    <div class="placeholder-cell">Редактировать</div>
+    <div class="placeholder-cell">Удалить</div>
   </div>
 
-<ul class="tasks">
+  <ul class="tasks">
     {% for task in tasks %}
     <li id="task-{{ task.id }}">
         <!-- Блок просмотра задачи -->
-         <div id="view-{{ task.id }}" class="task-view">
+         <div id="view-{{ task.id }}" class="tbl-row task-row">
             <div class="col-task">
               <input type="checkbox" class="task-select" data-id="{{ task.id }}" aria-label="Выбрать задачу {{ task.id }}">
               <span class="task-index">{{ (page - 1) * per_page + loop.index }}.</span>
-              <span id="title-{{ task.id }}" class="{% if task.done %}task-done{% else %}task-undone{% endif %}">{{ task.title }}</span>
-              <span id="status-{{ task.id }}">{% if task.done %}выполнена{% else %}не выполнена{% endif %}</span>
+              <span id="title-{{ task.id }}" class="task-title {% if task.done %}is-done{% endif %}">{{ task.title }}</span>
+              <span class="status-badge {% if task.done %}done{% else %}undone{% endif %}">{% if task.done %}выполнена{% else %}не выполнена{% endif %}</span>
             </div>
             <div class="controls col-mark">
                 {% if not task.done %}
@@ -30,13 +31,13 @@
                 {% endif %}
             </div>
             <div class="controls col-edit">
-                <button type="button" class="edit-button" data-id="{{ task.id }}">Редактировать</button>
+                <button type="button" class="edit-button" data-id="{{ task.id }}" aria-label="Редактировать задачу {{ task.title }}">Редактировать</button>
             </div>
             <div class="controls col-delete">
                 <form action="{{ url_for('tasks.delete_task') }}" method="post" class="inline-form delete-form">
                     {{ delete_form.csrf_token(id='csrf-delete-' ~ task.id) }}
                     {{ delete_form.task_id(value=task.id, id='task_id-delete-' ~ task.id) }}
-                    <button type="submit" class="delete-button">Удалить</button>
+                    <button type="submit" class="delete-button" aria-label="Удалить задачу {{ task.title }}">Удалить</button>
                 </form>
             </div>
          </div>
@@ -51,15 +52,16 @@
                 <label for="done-{{ task.id }}">Выполнена</label>
             </div>
             <div class="edit-buttons">
-                <button type="submit" class="save-button">Сохранить</button>
-                <button type="button" class="cancel-button" data-id="{{ task.id }}">Отмена</button>
+                <button type="submit" class="save-button" aria-label="Сохранить изменения задачи {{ task.title }}">Сохранить</button>
+                <button type="button" class="cancel-button" data-id="{{ task.id }}" aria-label="Отменить редактирование задачи {{ task.title }}">Отмена</button>
             </div>
           </form>
     </li>
     {% else %}
     <li class="no-tasks">Задач для текущего фильтра нет</li>
     {% endfor %}
- </ul>
+  </ul>
+</div>
 
 <!-- Нижняя панель действий и пагинации -->
 <div class="list-footer">
@@ -77,8 +79,8 @@
 {% set total_pages = (total // per_page) + (1 if total % per_page else 0) %}
 {% if total_pages < 1 %}{% set total_pages = 1 %}{% endif %}
   <div class="pagination" data-page="{{ page }}" data-per-page="{{ per_page }}" data-total="{{ total }}" data-total-pages="{{ total_pages }}">
-    <button type="button" class="page-prev" {% if page <= 1 %}disabled{% endif %}>Предыдущая</button>
-    <span class="page-info">Страница {{ page }} из {{ total_pages }}</span>
-    <button type="button" class="page-next" {% if page >= total_pages %}disabled{% endif %}>Следующая</button>
+    <button type="button" class="page-prev" {% if page <= 1 %}disabled{% endif %} aria-label="Предыдущая страница">Предыдущая</button>
+    <span class="page-info" aria-live="polite">Страница {{ page }} из {{ total_pages }}</span>
+    <button type="button" class="page-next" {% if page >= total_pages %}disabled{% endif %} aria-label="Следующая страница">Следующая</button>
   </div>
 </div>

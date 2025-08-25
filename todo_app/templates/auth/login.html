@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Вход{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">{% endblock %}
+{% block content %}
+<div class="auth-card">
+  <h2>Вход</h2>
+  <form method="post">
+    {{ form.csrf_token }}
+    <div class="form-row">
+      <label>Логин или email</label>
+      {{ form.username(size=32, maxlength=254, placeholder='username или email') }}
+      {% for error in form.username.errors %}<span class="error">{{ error }}</span>{% endfor %}
+    </div>
+    <div class="form-row">
+      <label>Пароль</label>
+      {{ form.password(size=32, maxlength=128, placeholder='Пароль') }}
+      {% for error in form.password.errors %}<span class="error">{{ error }}</span>{% endfor %}
+    </div>
+    <div class="form-row">
+      <label class="checkbox">{{ form.remember() }} Запомнить меня</label>
+    </div>
+    <div class="form-actions">
+      {{ form.submit(class_='primary') }}
+    </div>
+  </form>
+  <p>Нет аккаунта? <a href="{{ url_for('auth.register') }}">Зарегистрируйтесь</a></p>
+</div>
+{% endblock %}
+
+

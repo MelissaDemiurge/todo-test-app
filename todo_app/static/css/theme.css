@@ -1,0 +1,107 @@
+/* CSS переменные для темизации */
+:root{
+  --bg:#f8f9fa;--text:#212529;--muted:#6c757d;--card:#ffffff;--border:#e1e5ea;
+  --primary:#6ea8fe;--success:#2ecc71;--danger:#ff6b6b;--info:#17a2b8;--warning:#ffc107;
+  --chip-avatar-bg:#e9eefb;--chip-avatar-fg:#3b4a6b;--chip-avatar-border:#d7def2;
+}
+/* Тёмная тема */
+:root.dark{
+  --bg:#0f1115;--text:#e6e9f2;--muted:#8b93a7;--card:#151923;--border:#232838;
+  --primary:#6ea8fe;--success:#3fbf7f;--danger:#ff6b6b;--info:#6ea8fe;--warning:#f7b955;
+  --chip-avatar-bg:#1c2233;--chip-avatar-fg:#cfe1ff;--chip-avatar-border:#2a3350;
+}
+
+body{background:var(--bg);color:var(--text);margin:0}
+.tasks{list-style:none;margin:0;padding:0}
+.tasks li{background:transparent;border:none}
+.tasks-table{max-width:900px;margin:10px auto 12px;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--card);box-shadow:0 12px 36px rgba(0,0,0,.08)}
+.filter-bar .tabs{background:color-mix(in oklab, var(--card) 85%, black 5%);}
+.filter-bar .filter-button.active{background:var(--card);color:var(--primary)}
+.placeholder-cell{color:var(--muted)}
+.tbl-row{display:grid;grid-template-columns:1fr 220px 150px 120px;column-gap:14px;align-items:center;border-bottom:1px solid var(--border);padding:12px 14px;color:var(--text)}
+.tbl-row:last-child{border-bottom:none}
+.tbl-head{background:color-mix(in oklab, var(--card) 88%, black 6%);color:var(--muted);font-weight:600}
+.tbl-row > div{min-width:0}
+.task-row .col-task{display:grid;grid-template-columns:24px 24px 1fr max-content;align-items:center;gap:10px;min-width:0}
+.task-row .col-task .task-select{width:18px;height:18px;border:2px solid var(--muted);border-radius:4px;background:var(--card);appearance:none;display:inline-block}
+.task-row .col-task .task-select:checked{background:var(--muted)}
+.task-row .col-task .task-index{color:var(--muted)}
+.task-row .col-task .task-title{min-width:0;overflow-wrap:anywhere}
+.task-row .col-task .task-title.is-done{text-decoration:line-through;color:var(--muted)}
+.status-badge{padding:4px 8px;border-radius:8px;border:1px solid var(--border);font-size:.92em}
+.status-badge.undone{background:color-mix(in oklab, var(--warning) 10%, var(--card) 90%);border-color:color-mix(in oklab, var(--warning) 35%, var(--border) 65%)}
+.status-badge.done{background:color-mix(in oklab, var(--success) 10%, var(--card) 90%);border-color:color-mix(in oklab, var(--success) 35%, var(--border) 65%)}
+.task-row .controls{display:inline-flex;justify-content:center}
+
+/* Dark theme: применять те же цвета (дублирование для специфики) */
+:root.dark .add-button{background:#22c55e;color:#fff;border:1px solid #16a34a}
+:root.dark .edit-button{background:#3b82f6;color:#fff;border:1px solid #2563eb}
+:root.dark .done-button{background:#10b981;color:#fff;border:1px solid #0d9488}
+:root.dark .delete-button{background:#ef4444;color:#fff;border:1px solid #dc2626}
+:root.dark .save-button{background:#7aa2ff;color:#fff;border:1px solid #5b85e8}
+:root.dark .cancel-button{background:#64748b;color:#fff;border:1px solid #475569}
+
+/* Dark theme: clearer status badges */
+:root.dark .status-badge.undone{background:rgba(247,185,85,.18);border-color:#f7b955;color:#e9edef}
+:root.dark .status-badge.done{background:rgba(63,191,127,.18);border-color:#3fbf7f;color:#e9edef}
+.pagination .page-prev,.pagination .page-next{background:color-mix(in oklab, var(--card) 88%, black 4%);color:var(--text)}
+.toast-container{position:fixed;top:auto;right:auto;bottom:24px;left:24px;max-width:min(420px,calc(100vw - 48px));pointer-events:none;display:flex;flex-direction:column;align-items:flex-start;gap:10px;z-index:1000}
+.toast{
+  display:inline-flex;
+  align-items:center;
+  align-self:flex-start;
+  width:auto;
+  max-width:100%;
+  box-sizing:border-box;
+  white-space:normal;
+  word-break:break-word;
+  padding:10px 14px;
+  border-radius:10px;
+  box-shadow:0 8px 22px rgba(0,0,0,.18);
+  border:1px solid var(--border);
+  background:var(--card);
+  color:var(--text);
+  margin:0;
+}
+.toast.success{background:#22c55e;color:#fff;border-color:#16a34a}
+.toast.error{background:#ef4444;color:#fff;border-color:#dc2626}
+.toast.info{background:#3b82f6;color:#fff;border-color:#2563eb}
+.toast.warning{background:#f7b955;color:#0b1020;border-color:#f4a63a}
+.list-footer .bulk-actions-bottom .bulk-row{color:var(--text)}
+
+/* Кнопки (единая палитра, одинаковая в обеих темах) */
+.add-button{background:#22c55e;color:#fff;border:1px solid #16a34a}
+.edit-button{background:#3b82f6;color:#fff;border:1px solid #2563eb}
+.done-button{background:#10b981;color:#fff;border:1px solid #0d9488}
+.delete-button{background:#ef4444;color:#fff;border:1px solid #dc2626}
+.save-button{background:#7aa2ff;color:#fff;border:1px solid #5b85e8}
+.cancel-button{background:#64748b;color:#fff;border:1px solid #475569}
+button:hover, input[type="submit"]:hover{filter:brightness(1.06)}
+
+/* Поля */
+input[type="text"], select, #searchInput{background:var(--card);color:var(--text);border:1px solid var(--border)}
+input[type="text"]:focus{box-shadow:0 0 0 3px color-mix(in oklab, var(--primary) 30%, transparent)}
+
+/* Статусы задач */
+.task-done{color:var(--muted)}
+.task-undone{color:var(--text);background:color-mix(in oklab, var(--warning) 18%, var(--card) 82%);border-left-color:var(--warning)}
+
+/* Тумблер «Выполнена» в форме редактирования */
+:root.dark .edit-form .done-toggle{background:#1c2230;border-color:#2a3350}
+:root.dark .edit-form .done-toggle label{color:var(--text)}
+
+/* Переключатель темы (плавающая кнопка) */
+.theme-toggle{position:fixed;right:18px;bottom:18px;z-index:1100;border:1px solid var(--border);background:var(--card);color:var(--text);width:44px;height:44px;border-radius:999px;display:grid;place-items:center;box-shadow:0 12px 36px rgba(0,0,0,.25);cursor:pointer;transition:transform .06s ease, background .15s, border-color .15s}
+.theme-toggle:hover{transform:translateY(-1px)}
+.theme-toggle .icon-sun,.theme-toggle .icon-moon{width:22px;height:22px;fill:var(--text);display:none}
+:root:not(.dark) .theme-toggle .icon-sun{display:block}
+:root.dark .theme-toggle .icon-moon{display:block}
+
+/* Тёмной теме слегка затемним шапку */
+:root.dark .site-header{background:linear-gradient(180deg,#121626 0%,#101421 100%);}
+:root:not(.dark) .site-header{background:linear-gradient(180deg,#f8f9fb 0%,#f1f3f7 100%);border-bottom:1px solid var(--border)}
+.brand{color:var(--text)}
+.nav-link{color:var(--primary)}
+.user-chip{background:var(--card);border:1px solid var(--border)}
+.btn-ghost{color:var(--text);border:1px solid var(--border)}
+

@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, HiddenField, BooleanField, SubmitField
-from wtforms.validators import DataRequired, Length
+from wtforms import StringField, HiddenField, BooleanField, SubmitField, PasswordField
+from wtforms.validators import DataRequired, Length, Email, EqualTo, Optional, Regexp
 
 # 🔷 Общий миксин для поля title
 class TitleFormMixin:
@@ -36,3 +36,32 @@ class EditForm(FlaskForm, TitleFormMixin, TaskIdFormMixin):
 
 class BulkDeleteForm(FlaskForm):
     ids = StringField('ids', validators=[DataRequired(message='Не выбрано ни одной задачи')])
+
+
+class LoginForm(FlaskForm):
+    username = StringField('Имя пользователя или email', validators=[DataRequired(), Length(max=254)])
+    password = PasswordField('Пароль', validators=[DataRequired(), Length(min=8, max=128)])
+    remember = BooleanField('Запомнить меня')
+    submit = SubmitField('Войти')
+
+
+class RegisterForm(FlaskForm):
+    username = StringField(
+        'Имя пользователя',
+        validators=[
+            DataRequired(),
+            Length(min=5, max=24, message='От 5 до 24 символов'),
+            Regexp(r'^[a-z][a-z0-9_]*$', flags=0, message='Только латиница, цифры и _, начинаться с буквы')
+        ]
+    )
+    email = StringField('Email', validators=[Optional(), Email(), Length(max=254)])
+    password = PasswordField(
+        'Пароль',
+        validators=[
+            DataRequired(),
+            Length(min=8, max=128),
+            Regexp(r'^[A-Za-z0-9!@#\$%\^&\*\-_=\+\.]{8,128}$', message='Недопустимые символы в пароле')
+        ]
+    )
+    password2 = PasswordField('Повтор пароля', validators=[DataRequired(), EqualTo('password', message='Пароли должны совпадать')])
+    submit = SubmitField('Зарегистрироваться')

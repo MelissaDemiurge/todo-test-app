@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Админ · Пользователи{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">{% endblock %}
+{% block content %}
+<div class="admin-container">
+  <h2>Пользователи</h2>
+  <div class="users-table">
+    <div class="tbl-row tbl-head">
+      <div>Имя</div>
+      <div>Email</div>
+      <div>Роль</div>
+      <div>Задачи</div>
+    </div>
+    {% for u in users %}
+      <a href="{{ url_for('admin.user_tasks', user_id=u.id) }}" class="tbl-row tbl-link">
+        <div>{{ u.username }}</div>
+        <div>{{ u.email or '—' }}</div>
+        <div class="role {{ u.role }}">{{ u.role }}</div>
+        <div>Открыть</div>
+      </a>
+    {% else %}
+      <div class="tbl-row"><div>Нет пользователей</div></div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+

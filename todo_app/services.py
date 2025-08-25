@@ -1,4 +1,5 @@
 from sqlalchemy import select, func
+from flask_login import current_user
 from .models import db, Task
 
 def get_tasks(
@@ -7,6 +8,7 @@ def get_tasks(
     sort_order: str = 'asc',
     page: int | None = None,
     per_page: int | None = None,
+    for_user_id: int | None = None,
 ):
     """Получить задачи с учётом фильтра, поиска и сортировки (SQLAlchemy 2.0 style).
 
@@ -16,6 +18,19 @@ def get_tasks(
     - page, per_page: пагинация. Если заданы, возвращает кортеж (items, total)
     """
     conditions = []
+    # Ограничение по владельцу
+    if not getattr(current_user, 'is_authenticated', False):
+        # На защищённых роутов не попадём; оставим условие невозможным
+        conditions.append(Task.user_id == -1)
+    else:
+        if getattr(current_user, 'is_admin', False):
+            if for_user_id is not None:
+                conditions.append(Task.user_id == for_user_id)
+            # иначе админ видит свои задачи по умолчанию там, где это ожидается
+            else:
+                conditions.append(Task.user_id == current_user.id)
+        else:
+            conditions.append(Task.user_id == current_user.id)
     if filter_val == 'done':
         conditions.append(Task.done.is_(True))
     elif filter_val == 'undone':
@@ -26,14 +41,14 @@ def get_tasks(
     stmt = select(Task).where(*conditions)
 
     if sort_order == 'asc':
-        stmt = stmt.order_by(Task.date_created.asc())
+        stmt = stmt.order_by(Task.date_created.asc(), Task.id.asc())
     else:
-        stmt = stmt.order_by(Task.date_created.desc())
+        stmt = stmt.order_by(Task.date_created.desc(), Task.id.desc())
 
     # Пагинация
     if page is not None and per_page is not None:
-        # Подсчёт общего количества (без order_by)
-        count_stmt = select(func.count()).select_from(Task).where(*conditions)
+        # Подсчёт общего количества (без order_by) — COUNT(1) чуть быстрее на некоторых БД
+        count_stmt = select(func.count(1)).select_from(Task).where(*conditions)
 
         total = db.session.execute(count_stmt).scalar_one()
 

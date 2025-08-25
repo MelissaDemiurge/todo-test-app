@@ -1,0 +1,14 @@
+.admin-container{max-width:960px;margin:28px auto;padding:0 18px}
+.admin-container h2{margin:6px 0 16px;color:var(--text)}
+.users-table{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--card);box-shadow:0 12px 36px rgba(0,0,0,.12)}
+.tbl-row{display:grid;grid-template-columns:1.8fr 2fr .8fr .6fr;gap:0;border-bottom:1px solid var(--border);padding:12px 14px;color:var(--text)}
+.tbl-row:last-child{border-bottom:none}
+.tbl-head{background:color-mix(in oklab, var(--card) 88%, black 6%);color:var(--muted);font-weight:600}
+.tbl-link{text-decoration:none}
+:root.dark .tbl-link:hover{background:#191f2e}
+:root:not(.dark) .tbl-link:hover{background:#f3f5fb}
+.role.admin{color:#2ecc71}
+.role.user{color:#6ea8fe}
+.back{margin:8px 0}
+.back a{color:var(--primary);text-decoration:none}
+

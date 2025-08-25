@@ -2,12 +2,57 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
+  <script nonce="{{ csp_nonce }}">
+    (function(){
+      try{
+        var k='todo_theme';
+        var v=localStorage.getItem(k);
+        if(!v && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches){v='dark'}
+        if(v==='dark'){document.documentElement.classList.add('dark');}
+      }catch(e){}
+    })();
+  </script>
   <title>{% block title %}{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/header.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+  {% block extra_css %}{% endblock %}
 </head>
 <body>
-  <h1>Список задач</h1>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="{{ url_for('tasks.index') }}">To<span>Do</span></a>
+      <nav class="nav">
+        {% if current_user.is_authenticated %}
+          {% if current_user.is_admin %}
+            <a class="nav-link" href="{{ url_for('admin.users') }}">Админка</a>
+          {% endif %}
+          <div class="user-chip">
+            <div class="avatar" aria-hidden="true">{{ current_user.username[:1]|upper }}</div>
+            <span class="name">{{ current_user.username }}</span>
+          </div>
+          <form action="{{ url_for('auth.logout') }}" method="post" class="logout-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn-ghost">Выйти</button>
+          </form>
+        {% else %}
+          <a class="nav-link" href="{{ url_for('auth.login') }}">Войти</a>
+          <a class="nav-link" href="{{ url_for('auth.register') }}">Регистрация</a>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+
+  {# Flash выводить не будем — тосты покажем через JS, см. main.js #}
+
   {% block content %}{% endblock %}
-  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <!-- Переключатель темы -->
+  <button id="theme-toggle" class="theme-toggle" aria-label="Переключить тему" title="Переключить тему" type="button">
+    <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.76 4.84l-1.8-1.79L3.17 4.84l1.79 1.79 1.8-1.79zM1 13h3v-2H1v2zm10 10h2v-3h-2v3zM4.22 19.78l1.79-1.79-1.8-1.79-1.79 1.8 1.8 1.78zM20 13h3v-2h-3v2zm-2.93 6.78l1.79 1.79 1.41-1.41-1.79-1.79-1.41 1.41zM13 1h-2v3h2V1zm6.83 3.05l-1.41-1.41-1.79 1.79 1.41 1.41 1.79-1.79zM12 7a5 5 0 100 10 5 5 0 000-10z"/></svg>
+    <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+  </button>
+  {# Передаём flash-сообщения в JS как JSON, чтобы показать через тосты #}
+  <script id="flash-data" type="application/json" nonce="{{ csp_nonce }}">{{ get_flashed_messages(with_categories=true) | tojson }}</script>
+  <script src="{{ url_for('static', filename='js/main.js') }}" nonce="{{ csp_nonce }}"></script>
 </body>
 </html>

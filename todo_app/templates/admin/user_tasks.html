@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Админ · Задачи {{ target_user.username }}{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">{% endblock %}
+{% block content %}
+<div class="admin-container">
+  <div class="back"><a href="{{ url_for('admin.users') }}">← Назад к пользователям</a></div>
+  <h2>Задачи пользователя: {{ target_user.username }}</h2>
+  <!-- Панель фильтрации/сортировки/поиска как на главной -->
+  <div class="filter-bar">
+    <div class="tabs">
+      <button type="button" class="filter-button active" data-filter="all">Все</button>
+      <button type="button" class="filter-button" data-filter="undone">Невыполненные</button>
+      <button type="button" class="filter-button" data-filter="done">Выполненные</button>
+    </div>
+    <div class="right-controls">
+      <label for="sortSelect">Сортировка:</label>
+      <select id="sortSelect">
+        <option value="desc">Сначала новые</option>
+        <option value="asc">Сначала старые</option>
+      </select>
+      <label for="searchInput">Поиск:</label>
+      <input type="text" id="searchInput" placeholder="Поиск по названию...">
+    </div>
+  </div>
+  <div id="tasks-container" data-admin="1" data-user-id="{{ target_user.id }}">
+    {% include "tasks_list_partial.html" %}
+  </div>
+</div>
+{% endblock %}
+
+

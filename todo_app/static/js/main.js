@@ -1,5 +1,41 @@
 document.addEventListener('DOMContentLoaded', () => {
     const tasksContainer = document.getElementById('tasks-container');
+    // ---------- Theme toggle ----------
+    const themeRoot = document.documentElement;
+    const themeKey = 'todo_theme';
+    function applyTheme(theme){
+        if (theme === 'dark') themeRoot.classList.add('dark');
+        else themeRoot.classList.remove('dark');
+    }
+    try {
+        const saved = localStorage.getItem(themeKey);
+        if (saved) applyTheme(saved);
+        // system preference as default
+        if (!saved && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            applyTheme('dark');
+        }
+    } catch (_) {}
+    const toggleBtn = document.getElementById('theme-toggle');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+            const isDark = themeRoot.classList.toggle('dark');
+            try { localStorage.setItem(themeKey, isDark ? 'dark' : 'light'); } catch (_) {}
+        });
+    }
+    // ---------- Flash -> Toasts ----------
+    try {
+        const flashEl = document.getElementById('flash-data');
+        if (flashEl && flashEl.textContent) {
+            const flashItems = JSON.parse(flashEl.textContent || '[]');
+            if (Array.isArray(flashItems)) {
+                flashItems.forEach(([category, message]) => {
+                    const map = { error: 'error', warning: 'warning', success: 'success', info: 'info' };
+                    const type = map[category] || 'info';
+                    showToast(message, type);
+                });
+            }
+        }
+    } catch (_) {}
     const filterButtons = document.querySelectorAll('.filter-button');
     const sortSelect = document.getElementById('sortSelect');
     const searchInput = document.getElementById('searchInput');
@@ -27,13 +63,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
         toast.setAttribute('role', 'alert');
+        // Чистый текст без дополнительных обёрток — ширина только по содержимому
         toast.textContent = message;
+        // Выравнивание по пиксельной сетке (боремся с субпиксельными расхождениями)
+        toast.style.willChange = 'transform, opacity';
         toastRoot.appendChild(toast);
+        // Начальные стили для плавного появления
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(6px)';
+        requestAnimationFrame(() => {
+            toast.style.transition = 'opacity 0.18s ease-out, transform 0.18s ease-out';
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateY(0)';
+        });
         setTimeout(() => {
-            toast.style.transition = 'opacity 0.4s ease-out, transform 0.4s ease-out';
+            toast.style.transition = 'opacity 0.22s ease-out, transform 0.22s ease-out';
             toast.style.opacity = '0';
             toast.style.transform = 'translateY(-6px)';
-            setTimeout(() => toast.remove(), 400);
+            setTimeout(() => toast.remove(), 220);
         }, timeoutMs);
     }
 
@@ -70,6 +117,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const buildTasksUrl = () => {
         const params = buildSearchParams();
+        // Для админ-страницы задач пользователя прокинем user_id
+        const adminContainer = tasksContainer && tasksContainer.getAttribute('data-admin') === '1';
+        if (adminContainer) {
+            const uid = tasksContainer.getAttribute('data-user-id');
+            if (uid) params.set('user_id', uid);
+        }
         return `/tasks_data?${params.toString()}`;
     };
     // ----------- URL sync helpers -----------
@@ -417,7 +470,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ---------- Initial load ----------
+    // JS должен вести себя безопасно и на страницах без списка задач (логин/регистрация)
     updateSelectedCount();
-    fetchTasksAndUpdate();
+    if (tasksContainer) {
+        fetchTasksAndUpdate();
+    }
 });
 
