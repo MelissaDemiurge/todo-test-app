@@ -32,14 +32,18 @@ def login():
         else:
             # Присваиваем новый токен активной сессии (атомарно)
             new_token = secrets.token_urlsafe(48)
-            with db.session.begin():
-                user.active_session_token = new_token
-            # Сбросить сессию перед входом (смягчение session fixation)
-            session.clear()
-            login_user(user, remember=form.remember.data)
-            session['session_token'] = new_token
-            next_url = request.args.get('next')
-            return redirect(next_url or url_for('tasks.index'))
+            user.active_session_token = new_token
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                flash('Не удалось обновить сеанс. Попробуйте ещё раз', 'error')
+            else:
+                session.clear()
+                login_user(user, remember=form.remember.data)
+                session['session_token'] = new_token
+                next_url = request.args.get('next')
+                return redirect(next_url or url_for('tasks.index'))
     return render_template('auth/login.html', form=form)
 
 
@@ -53,13 +57,13 @@ def register():
         email = form.email.data or None
         password_hash = generate_password_hash(form.password.data)
         user = User(username=username, email=email, password_hash=password_hash)
+        new_token = secrets.token_urlsafe(48)
+        user.active_session_token = new_token
+        db.session.add(user)
         try:
-            with db.session.begin():
-                db.session.add(user)
-                # Выдаём токен активной сессии при регистрации
-                new_token = secrets.token_urlsafe(48)
-                user.active_session_token = new_token
+            db.session.commit()
         except IntegrityError:
+            db.session.rollback()
             form.username.errors.append('Пользователь с таким именем или почтой уже существует')
         else:
             session.clear()
