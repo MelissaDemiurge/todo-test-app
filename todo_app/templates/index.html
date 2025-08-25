@@ -2,31 +2,34 @@
 {% block title %}Список задач{% endblock %}
 {% block content %}
 
-  <!-- Форма добавления новой задачи -->
-  <form id="add-task-form" method="POST">
-    {{ task_form.csrf_token }}
-    Название задачи:
-    {{ task_form.title(maxlength=24) }}
+  <!-- Верхняя панель: поле + кнопка -->
+  <div class="top-bar">
+    <form id="add-task-form" method="POST" class="input-group">
+      {{ task_form.csrf_token }}
+      {{ task_form.title(maxlength=24, placeholder='Добавьте новую задачу') }}
+      <button type="submit" class="add-button">Добавить</button>
+    </form>
     {% for error in task_form.title.errors %}
       <span class="error">{{ error }}</span>
     {% endfor %}
-    <button type="submit" class="add-button">Добавить</button>
-  </form>
+  </div>
 
-
-  <!-- Панель фильтрации и поиска -->
+  <!-- Панель фильтрации/сортировки/поиска -->
   <div class="filter-bar">
-    <!-- Кнопки фильтрации по статусу -->
-    <button type="button" class="filter-button active" data-filter="all">Все</button>
-    <button type="button" class="filter-button" data-filter="undone">Невыполненные</button>
-    <button type="button" class="filter-button" data-filter="done">Выполненные</button>
-    <!-- Выпадающий список сортировки по дате -->
-    <select id="sortSelect">
-      <option value="asc">Сначала старые</option>
-      <option value="desc">Сначала новые</option>
-    </select>
-    <!-- Поле поиска по названию задачи -->
-    <input type="text" id="searchInput" placeholder="Поиск...">
+    <div class="tabs">
+      <button type="button" class="filter-button active" data-filter="all">Все</button>
+      <button type="button" class="filter-button" data-filter="undone">Невыполненные</button>
+      <button type="button" class="filter-button" data-filter="done">Выполненные</button>
+    </div>
+    <div class="right-controls">
+      <label for="sortSelect">Сортировка:</label>
+      <select id="sortSelect">
+        <option value="desc">Сначала новые</option>
+        <option value="asc">Сначала старые</option>
+      </select>
+      <label for="searchInput">Поиск:</label>
+      <input type="text" id="searchInput" placeholder="Поиск по названию...">
+    </div>
   </div>
 
   <div id="tasks-container">
