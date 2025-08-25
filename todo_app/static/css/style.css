@@ -405,12 +405,15 @@ body.loading::after {
     margin: 18px auto 8px;
     display: grid;
     grid-template-columns: 1fr 180px 120px 120px;
-    gap: 10px;
+    gap: 16px;
     color: #6c757d;
     font-weight: 600;
     border-bottom: 1px solid #e1e5ea;
     padding-bottom: 10px;
 }
+/* Небольшие сдвиги заголовков для визуального выравнивания с кнопками ниже */
+.tasks-header > div:nth-child(3) { padding-left: 30px; }  /* Редактировать */
+.tasks-header > div:nth-child(4) { padding-left: 30px; } /* Удалить */
 .pagination {
     display: flex;
     align-items: center;

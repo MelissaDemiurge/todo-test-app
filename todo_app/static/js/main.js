@@ -339,7 +339,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     inputEl.value = inputEl.dataset.originalValue;
                 }
                 editForm.style.display = 'none';
-                viewDiv.style.display = 'flex';
+                viewDiv.style.display = 'grid';
             }
             return;
         }
