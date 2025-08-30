@@ -78,8 +78,11 @@ def register():
 def logout():
     # Сбросить токен активной сессии, чтобы немедленно инвалидировать remember-cookie
     if current_user.is_authenticated:
-        current_user.active_session_token = None
-        db.session.commit()
+        try:
+            current_user.active_session_token = None
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
     logout_user()
     session.pop('session_token', None)
     return redirect(url_for('auth.login'))

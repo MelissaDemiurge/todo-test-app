@@ -1,9 +1,9 @@
-from flask import Blueprint, render_template, redirect, url_for, request
+from flask import Blueprint, render_template, redirect, url_for, request, g
 from flask_login import login_required, current_user
 from sqlalchemy.exc import IntegrityError
 from todo_app.forms import TaskForm, MarkDoneForm, DeleteForm, EditForm, BulkDeleteForm
 from todo_app.models import db, Task
-from todo_app.services import get_tasks
+from todo_app.services import get_tasks, count_tasks
 from sqlalchemy import delete
 from todo_app.utils import ajax_required, is_ajax, ok, bad_request, first_error
 
@@ -15,7 +15,15 @@ def get_task_by_id(id_str):
         task_id = int(id_str)
     except ValueError:
         return None
-    task = db.session.get(Task, task_id)
+    cache = getattr(g, 'task_cache', None)
+    if cache is None:
+        cache = {}
+        g.task_cache = cache
+    task = cache.get(task_id)
+    if task is None:
+        task = db.session.get(Task, task_id)
+        if task is not None:
+            cache[task_id] = task
     if not task:
         return None
     # Проверка владения: админ видит всё
@@ -38,21 +46,36 @@ def index():
     edit_form = EditForm()
     bulk_form = BulkDeleteForm()
 
-    # Начальная загрузка страницы: покажем первую страницу задач
-    page, per_page = 1, 15
-    items, total = get_tasks(page=page, per_page=per_page)
-
+    # Сначала обработаем форму (POST может быть интенсивным) — затем перечитаем список при необходимости
     is_ajax_req = is_ajax()
-
     if task_form.validate_on_submit():
-        title = task_form.title.data
+        title = (task_form.title.data or '').strip()
+        # Предварительная проверка уникальности в рамках текущего пользователя
+        exists_stmt = db.select(Task.id).where(
+            Task.user_id == current_user.id,
+            Task.title == title,
+        ).limit(1)
+        exists_id = db.session.execute(exists_stmt).scalar_one_or_none()
+        if exists_id is not None:
+            msg = f'Задача "{title}" уже существует'
+            if is_ajax_req:
+                return bad_request(msg)
+            task_form.title.errors.append(msg)
+            return render_template('index.html',
+                                   tasks=[], page=1, per_page=15, total=0,
+                                   task_form=task_form,
+                                   mark_form=mark_form,
+                                   delete_form=delete_form,
+                                   edit_form=edit_form,
+                                   bulk_form=bulk_form)
         new_task = Task(title=title, user_id=current_user.id)
         db.session.add(new_task)
         try:
             db.session.commit()
         except IntegrityError:
             db.session.rollback()
-            msg = f'Задача "{title}" уже существует'
+            # На случай устаревших ограничений в БД или иных нарушений целостности
+            msg = f'Не удалось добавить задачу "{title}"'
             if is_ajax_req:
                 return bad_request(msg)
             task_form.title.errors.append(msg)
@@ -63,6 +86,10 @@ def index():
     else:
         if request.method == 'POST' and is_ajax_req:
             return bad_request(first_error(task_form))
+
+    # Начальная загрузка/перерисовка: показываем первую страницу задач
+    page, per_page = 1, 15
+    items, total = get_tasks(page=page, per_page=per_page)
 
     return render_template('index.html',
                            tasks=items,
@@ -123,14 +150,24 @@ def edit_task(form):
     # Проверка права на редактирование
     if task.user_id not in (None, current_user.id) and not getattr(current_user, 'is_admin', False):
         return bad_request("Недостаточно прав")
-    new_title = form.title.data
-    task.title = new_title
-    task.done = bool(form.done.data)
+    new_title = (form.title.data or '').strip()
+    # Предварительная проверка уникальности в рамках пользователя
+    exists_stmt = db.select(Task.id).where(
+        Task.user_id == (task.user_id if task.user_id is not None else current_user.id),
+        Task.title == new_title,
+        Task.id != task.id,
+    ).limit(1)
+    exists_id = db.session.execute(exists_stmt).scalar_one_or_none()
+    if exists_id is not None:
+        form.title.errors.append(f'Название "{new_title}" уже используется другой задачей')
+        return None
     try:
+        task.title = new_title
+        task.done = bool(form.done.data)
         db.session.commit()
     except IntegrityError:
         db.session.rollback()
-        form.title.errors.append(f'Название "{new_title}" уже используется другой задачей')
+        form.title.errors.append('Не удалось сохранить изменения')
     else:
         return ok(f'Задача "{task.title}" обновлена')
 
@@ -157,8 +194,8 @@ def tasks_data():
         if user_id_param and user_id_param.isdigit():
             for_user_id = int(user_id_param)
 
-    # Первая выборка, чтобы узнать total
-    items, total = get_tasks(filter_val, search_term, sort_order, page=page, per_page=per_page, for_user_id=for_user_id)
+    # Сначала узнаём total (без выборки элементов), затем нормализуем страницу
+    total = count_tasks(filter_val, search_term, for_user_id)
     # Корректируем границы страниц: минимум 1 страница даже при total=0
     total_pages = (total + per_page - 1) // per_page
     if total_pages < 1:
@@ -167,8 +204,8 @@ def tasks_data():
         page = 1
     if page > total_pages:
         page = total_pages
-        # Перечитываем элементы для скорректированной страницы
-        items, total = get_tasks(filter_val, search_term, sort_order, page=page, per_page=per_page, for_user_id=for_user_id)
+    # Теперь единственным запросом читаем элементы целевой страницы
+    items = get_tasks(filter_val, search_term, sort_order, page=page, per_page=per_page, for_user_id=for_user_id, compute_total=False)
     mark_form = MarkDoneForm()
     delete_form = DeleteForm()
     edit_form = EditForm()
